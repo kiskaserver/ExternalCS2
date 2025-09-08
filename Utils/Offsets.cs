@@ -98,7 +98,7 @@ public abstract class Offsets
             destData.m_aimPunchAngle = sourceDataClient.clientdll.classes.C_CSPlayerPawn.fields.m_aimPunchAngle;
             destData.m_modelState = sourceDataClient.clientdll.classes.CSkeletonInstance.fields.m_modelState;
             destData.m_pGameSceneNode = sourceDataClient.clientdll.classes.C_BaseEntity.fields.m_pGameSceneNode;
-            destData.m_iIDEntIndex = sourceDataClient.clientdll.classes.C_CSPlayerPawnBase.fields.m_iIDEntIndex;
+            destData.m_iIDEntIndex = sourceDataClient.clientdll.classes.C_CSPlayerPawn.fields.m_iIDEntIndex;
             destData.m_lifeState = sourceDataClient.clientdll.classes.C_BaseEntity.fields.m_lifeState;
             destData.m_iHealth = sourceDataClient.clientdll.classes.C_BaseEntity.fields.m_iHealth;
             destData.m_iTeamNum = sourceDataClient.clientdll.classes.C_BaseEntity.fields.m_iTeamNum;
@@ -184,4 +184,5 @@ public abstract class Offsets
     }
 
     #endregion
+
 }
