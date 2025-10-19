@@ -40,7 +40,7 @@ public class Entity : EntityBase
         var listEntry = gameProcess.Process.Read<IntPtr>(EntityList + 8 * entryIndex + 16);
 
         return listEntry != IntPtr.Zero
-            ? gameProcess.Process.Read<IntPtr>(listEntry + 120 * (Id & 0x1FF))
+            ? gameProcess.Process.Read<IntPtr>(listEntry + 112 * (Id & 0x1FF))
             : IntPtr.Zero;
     }
 
@@ -53,7 +53,7 @@ public class Entity : EntityBase
         var listEntry = gameProcess.Process.Read<IntPtr>(EntityList + 0x8 * pawnIndex + 16);
 
         return listEntry != IntPtr.Zero
-            ? gameProcess.Process.Read<IntPtr>(listEntry + 120 * (playerPawn & 0x1FF))
+            ? gameProcess.Process.Read<IntPtr>(listEntry + 112 * (playerPawn & 0x1FF))
             : IntPtr.Zero;
     }
 
@@ -94,4 +94,5 @@ public class Entity : EntityBase
             return false;
         }
     }
+
 }

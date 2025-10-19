@@ -10,7 +10,7 @@ public sealed class TriggerBot : ThreadedServiceBase
     private const int TriggerDelayMs = 5;
     private const int EntityListMultiplier = 0x8;
     private const int EntityEntryOffset = 0x10;
-    private const int EntityStride = 120;
+    private const int EntityStride = 112;
     private const int EntityIndexMask = 0x1FF;
     private const int EntityIndexShift = 9;
     private static Keys _triggerBotHotKey;
@@ -103,4 +103,5 @@ public sealed class TriggerBot : ThreadedServiceBase
         base.Dispose();
         GC.SuppressFinalize(this);
     }
+
 }
