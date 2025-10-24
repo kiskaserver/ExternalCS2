@@ -203,8 +203,8 @@ Avoid adding code for cheating in live public matches.
 ## Contact / Notes
 
 - Discord: `frcadm`
-- GitHub Discussions: [https://github.com/kiskaserver/CS2GameHelper/discussions](https://github.com/kiskaserver/CS2GameHelper/discussions)
-- Issues for bug reports / feature requests: [https://github.com/kiskaserver/CS2GameHelper/issues](https://github.com/kiskaserver/CS2GameHelper/issues)
+- GitHub Discussions: [https://github.com/kiskaserver/ExternalCS2/discussions](https://github.com/kiskaserver/ExternalCS2/discussions)
+- Issues for bug reports / feature requests: [https://github.com/kiskaserver/ExternalCS2/issues](https://github.com/kiskaserver/ExternalCS2/issues)
 - Run the built executable from `Publish/CS2GameHelper/` or `bin/Release/net8.0-windows/`
 - Antivirus must be disabled
 - Admin rights required for hooks / memory reading  
