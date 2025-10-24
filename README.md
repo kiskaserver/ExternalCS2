@@ -196,7 +196,7 @@ ExternalCS2/
 
 DTOs are updated via: https://github.com/sezzyaep/CS2-OFFSETS
 
-## 🌟 Community Feedback / Reviews
+## Community Feedback / Reviews
 
 <div style="display: flex; flex-direction: column; gap: 12px;">
 
