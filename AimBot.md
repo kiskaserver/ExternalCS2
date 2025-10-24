@@ -108,7 +108,7 @@ In code we use signed horizontal and vertical components computed via projection
 Yaw and pitch (used in code)
 
 - Yaw (horizontal angle) is computed as:
-   $$\mathrm{yaw}(v) = \operatorname{atan2}(v_y, v_x)$$
+   $$\mathrm{yaw}(v) = \arctan2(v_y, v_x)$$
 - Pitch (vertical angle) is approximated as:
    $$\mathrm{pitch}(v) = \arcsin(-v_z)$$
 
@@ -214,6 +214,3 @@ $$\text{pixels}_x = \frac{0.02}{0.001}\cdot 1 = 20\ \text{pixels}$$
 If neural predicts $(-1.5, 0.7)$ and AimTrainer bucket mean is $(-0.5, 0.0)$, total correction = $(-2.0, 0.7)$, so final pixel target becomes $(18, 0.7)$ (rounded to integers in code).
 
 ---
-
-If you'd like, I can (a) add normalized input preprocessing code examples, (b) produce the suggested architectural SVG diagram, or (c) add a short Jupyter notebook that simulates the angle→pixel math and shows how training residuals affect aim over time. Tell me which you prefer and I'll add it.
-

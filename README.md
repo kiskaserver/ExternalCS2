@@ -3,6 +3,31 @@
 > Important: This project is for research and educational purposes only. Using these tools to gain an unfair advantage in online multiplayer games violates Valve's Terms of Service and will likely result in a permanent account ban.
 
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![.NET](https://img.shields.io/badge/.NET-8.0-blue?logo=dotnet)](https://dotnet.microsoft.com/)
+[![C#](https://img.shields.io/badge/C%23-10.0-blue?logo=c%23)](https://docs.microsoft.com/dotnet/csharp/)
+[![TorchSharp GPU](https://img.shields.io/nuget/v/TorchSharp-cuda-windows?label=TorchSharp-cuda-windows&logo=nuget)](https://www.nuget.org/packages/TorchSharp-cuda-windows/0.105.1)
+[![TorchSharp CPU](https://img.shields.io/nuget/v/TorchSharp-windows?label=TorchSharp-windows(CPU)&logo=nuget)](https://www.nuget.org/packages/TorchSharp-windows/0.105.1)
+[![SkiaSharp](https://img.shields.io/nuget/v/SkiaSharp?label=SkiaSharp&logo=nuget)](https://www.nuget.org/packages/SkiaSharp/)
+[![Silk.NET](https://img.shields.io/nuget/v/Silk.NET.OpenGL?label=Silk.NET&logo=nuget)](https://www.nuget.org/packages/Silk.NET.OpenGL/)
+[![System.Text.Json](https://img.shields.io/nuget/v/System.Text.Json?label=System.Text.Json&logo=nuget)](https://www.nuget.org/packages/System.Text.Json/)
+[![System.Drawing.Common](https://img.shields.io/nuget/v/System.Drawing.Common?label=System.Drawing.Common&logo=nuget)](https://www.nuget.org/packages/System.Drawing.Common/)
+[![xUnit](https://img.shields.io/nuget/v/xunit?label=xUnit&logo=xunit)](https://www.nuget.org/packages/xunit/)
+
+## Tech stack & libraries
+
+This project is written in C# targeting .NET 8 (net8.0-windows) and is Windows-focused. Key libraries and frameworks used:
+
+- Language / runtime: C# / .NET 8.0 (net8.0-windows)
+- Neural network: TorchSharp (CUDA package: `TorchSharp-cuda-windows`; CPU alternative: `TorchSharp-windows`)
+- Graphics & rendering: SkiaSharp
+- Windowing / OpenGL: Silk.NET (OpenGL, Windowing, Input)
+- JSON config: System.Text.Json
+- Numerics: System.Numerics.Vectors
+- Drawing utilities: System.Drawing.Common
+- Testing: xUnit (`xunit`, `xunit.runner.visualstudio`, `Microsoft.NET.Test.Sdk`)
+- Low-level input / WinAPI interop: custom wrappers in `Core/Kernel32.cs` and `Core/User32.cs`
+
+Most NuGet packages are declared in `CS2GameHelper.csproj`.
 
 ## Table of Contents
 
