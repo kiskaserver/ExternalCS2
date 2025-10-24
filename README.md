@@ -5,7 +5,7 @@
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![.NET](https://img.shields.io/badge/.NET-8.0-blue?logo=dotnet)](https://dotnet.microsoft.com/)
 [![C#](https://img.shields.io/badge/C%23-10.0-blue?logo=c%23)](https://docs.microsoft.com/dotnet/csharp/)
-[![TorchSharp GPU](https://img.shields.io/nuget/v/TorchSharp-cuda?label=TorchSharp-cuda-windows&logo=nuget)](https://www.nuget.org/packages/TorchSharp-cuda/0.105.1)
+[![TorchSharp GPU](https://img.shields.io/nuget/v/TorchSharp-cuda?label=TorchSharp-cuda&logo=nuget)](https://www.nuget.org/packages/TorchSharp-cuda/0.105.1)
 [![TorchSharp CPU](https://img.shields.io/nuget/v/TorchSharp-cpu?label=TorchSharp-cpu&logo=nuget)](https://www.nuget.org/packages/TorchSharp-cpu/0.105.1)
 [![SkiaSharp](https://img.shields.io/nuget/v/SkiaSharp?label=SkiaSharp&logo=nuget)](https://www.nuget.org/packages/SkiaSharp/)
 [![Silk.NET](https://img.shields.io/nuget/v/Silk.NET.OpenGL?label=Silk.NET&logo=nuget)](https://www.nuget.org/packages/Silk.NET.OpenGL/)
