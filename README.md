@@ -58,7 +58,7 @@ The project contains helper modules for visualization and automation, including:
 
 It is intended as a research and learning platform for exploring game internals, memory reading, and external tooling.
 
-This project was originally forked from `CS2External` by sweeperxz but has been almost completely rewritten. The AimBot and ESP were implemented from the ground up with new architecture and advanced features.
+This project was **originally forked from `CS2External` by sweeperxz** but has been **extensively rewritten**, with AimBot and ESP modules implemented from the ground up with new architecture and advanced features.
 
 > **Legal & Ethical Notice**
 > This software is provided strictly for research, educational, and local testing purposes. The authors do not condone using this software to gain unfair advantages in online multiplayer games.
@@ -200,7 +200,11 @@ Avoid adding code for cheating in live public matches.
 
 ## Contact / Notes
 
-- Discord: `frcadm`  
+## Contact / Notes
+
+- Discord: `frcadm`
+- GitHub Discussions: [https://github.com/kiskaserver/CS2GameHelper/discussions](https://github.com/kiskaserver/CS2GameHelper/discussions)
+- Issues for bug reports / feature requests: [https://github.com/kiskaserver/CS2GameHelper/issues](https://github.com/kiskaserver/CS2GameHelper/issues)
 - Run the built executable from `Publish/CS2GameHelper/` or `bin/Release/net8.0-windows/`
 - Antivirus must be disabled
 - Admin rights required for hooks / memory reading  
