@@ -38,7 +38,7 @@
             replace the CUDA package above with the CPU package below. Training will
             run on the CPU and will be noticeably slower but more portable.
 
-            <PackageReference Include="TorchSharp-windows" Version="0.105.1" />
+            <PackageReference Include="TorchSharp-cpu" Version="0.105.1" />
         -->
         <!-- Test helpers (added to main project to ensure test packages are available during CI/build) -->
         <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.0.0" PrivateAssets="all" />
@@ -49,6 +49,7 @@
     <ItemGroup>
         <None Include="assets\fonts\undefeated.ttf">
             <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+            <ExcludeFromSingleFile>false</ExcludeFromSingleFile>
         </None>
     </ItemGroup>
 

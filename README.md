@@ -85,7 +85,7 @@ Default (GPU-accelerated) package in `CS2GameHelper.csproj`:
 CPU-only alternative:
 
 ```xml
-<PackageReference Include="TorchSharp-windows" Version="0.105.1" />
+<PackageReference Include="TorchSharp-cpu" Version="0.105.1" />
 ```
 
 Note: CPU training/inference is much slower and more CPU-intensive. Use GPU for best performance.
