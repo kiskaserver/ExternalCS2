@@ -12,6 +12,7 @@
         <ApplicationIcon>assets\logo.ico</ApplicationIcon>
         <Version>1.7</Version>
         <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
+        <StartupObject>CS2GameHelper.Program</StartupObject>
     </PropertyGroup>
 
     <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">
