@@ -201,6 +201,7 @@ Avoid adding code for cheating in live public matches.
 ## Contact / Notes
 
 - Discord: `frcadm`  
-- Run the built executable from `Publish/CS2GameHelper/` or `bin/Release/net8.0-windows/`  
+- Run the built executable from `Publish/CS2GameHelper/` or `bin/Release/net8.0-windows/`
+- Antivirus must be disabled
 - Admin rights required for hooks / memory reading  
 - Game must be running before attaching tool
