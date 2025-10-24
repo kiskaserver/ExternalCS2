@@ -65,6 +65,12 @@ This project was **originally forked from `CS2External` by sweeperxz** but has b
 
 ## Quick Start — Build & Run
 
+### Release binaries
+
+- The repository's Releases page contains a self-contained CPU build (exe) as a downloadable artifact. This is the recommended build for users without a CUDA-capable GPU.
+- A GPU (CUDA) build (exe) is available separately — see the Release notes or the GPU build link included in the release description to download the GPU-accelerated exe.
+> **Note:** This build is intended for NVIDIA GPUs with CUDA support only.
+
 ### Requirements
 
 - OS: Windows 10/11 (x64)
