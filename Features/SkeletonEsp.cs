@@ -1,8 +1,9 @@
-using CS2Cheat.Core.Data;
-using CS2Cheat.Data.Entity;
-using Color = SharpDX.Color;
+using System.Numerics;
+using CS2GameHelper.Core.Data;
+using CS2GameHelper.Data.Entity;
+using CS2GameHelper.Graphics;
 
-namespace CS2Cheat.Features;
+namespace CS2GameHelper.Features;
 
 public static class SkeletonEsp
 {
@@ -35,10 +36,16 @@ public static class SkeletonEsp
         ("leg_lower_R", "ankle_R")
     ];
 
-    public static void Draw(Graphics.Graphics graphics)
+    public static void Draw(ModernGraphics graphics)
     {
         var player = graphics.GameData.Player;
-        foreach (var entity in graphics.GameData.Entities)
+        var entities = graphics.GameData.Entities;
+        if (player == null || entities == null)
+        {
+            return;
+        }
+
+        foreach (var entity in entities)
         {
             if (!IsValidEntity(entity, player)) continue;
 
@@ -47,19 +54,18 @@ public static class SkeletonEsp
         }
     }
 
-
     private static bool IsValidEntity(Entity entity, Player player)
     {
         return entity.IsAlive() &&
                entity.AddressBase != player.AddressBase;
     }
 
-    private static Color GetTeamColor(Team team)
+    private static uint GetTeamColor(Team team)
     {
-        return team == Team.Terrorists ? Color.Yellow : Color.Blue;
+        return team == Team.Terrorists ? 0xFFFFFF00 : 0xFF0000FF; // Yellow : Blue
     }
 
-    private static void DrawSkeleton(Graphics.Graphics graphics, Entity entity, Color color)
+    private static void DrawSkeleton(ModernGraphics graphics, Entity entity, uint color)
     {
         var bonePositions = entity.BonePos;
         if (bonePositions == null) return;

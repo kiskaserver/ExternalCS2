@@ -1,61 +1,110 @@
-using CS2Cheat.Utils;
-using Color = SharpDX.Color;
+using CS2GameHelper.Utils;
+using SkiaSharp;
 
-namespace CS2Cheat.Features;
+namespace CS2GameHelper.Features;
 
-internal class BombTimer(Graphics.Graphics graphics) : ThreadedServiceBase
+internal class BombTimer(Graphics.ModernGraphics graphics) : ThreadedServiceBase
 {
-    private static string _bombPlanted = string.Empty;
     private static string _bombSite = string.Empty;
     private static bool _isBombPlanted;
-    private static float _defuseLeft;
     private static float _timeLeft;
-    private static float _defuseCountDown;
-    private static float _c4Blow;
+    private static float _defuseLeft;
     private static bool _beingDefused;
+
     private float _currentTime;
     private IntPtr _globalVars;
     private IntPtr _plantedC4;
-    private IntPtr _tempC4;
-
 
     protected override void FrameAction()
     {
-        _globalVars = graphics.GameProcess.ModuleClient.Read<IntPtr>(Offsets.dwGlobalVars);
-        _currentTime = graphics.GameProcess.Process.Read<float>(_globalVars + Offsets.m_nCurrentTickThisFrame);
-        graphics.GameProcess.Process.Read<float>(_globalVars + 0x30);
+        var gameProcess = graphics.GameProcess;
+        var moduleClient = gameProcess.ModuleClient;
+        var process = gameProcess.Process;
 
-        _tempC4 = graphics.GameProcess.ModuleClient.Read<IntPtr>(Offsets.dwPlantedC4);
-        _plantedC4 = graphics.GameProcess.Process.Read<IntPtr>(_tempC4);
-        _isBombPlanted = graphics.GameProcess.ModuleClient.Read<bool>(Offsets.dwPlantedC4 - 0x8);
+        // Reset state if game process is invalid
+        if (moduleClient == null || process == null)
+        {
+            _isBombPlanted = false;
+            return;
+        }
 
-        _defuseCountDown = graphics.GameProcess.Process.Read<float>(_plantedC4 + Offsets.m_flDefuseCountDown);
-        _c4Blow = graphics.GameProcess.Process.Read<float>(_plantedC4 + Offsets.m_flC4Blow);
-        _beingDefused = graphics.GameProcess.Process.Read<bool>(_plantedC4 + Offsets.m_bBeingDefused);
+        // Read global vars and current time
+        _globalVars = moduleClient.Read<IntPtr>(Offsets.dwGlobalVars);
+        if (_globalVars == IntPtr.Zero)
+        {
+            _isBombPlanted = false;
+            return;
+        }
 
-        _timeLeft = _c4Blow - _currentTime;
-        _defuseLeft = _defuseCountDown - _currentTime;
+        // Safely read current time (tick or real time)
+        _currentTime = ReadSafe(() => process.Read<float>(_globalVars + 0x0), 0f); // realtime
 
-        _timeLeft = Math.Max(_timeLeft, 0);
-        _defuseLeft = Math.Max(_defuseLeft, 0);
+        // Read planted C4 entity pointer
+        var tempC4 = moduleClient.Read<IntPtr>(Offsets.dwPlantedC4);
+        if (tempC4 == IntPtr.Zero)
+        {
+            _isBombPlanted = false;
+            return;
+        }
 
-        if (!_beingDefused)
-            _defuseLeft = 0;
+        _plantedC4 = ReadSafe(() => process.Read<IntPtr>(tempC4), IntPtr.Zero);
+        if (_plantedC4 == IntPtr.Zero)
+        {
+            _isBombPlanted = false;
+            return;
+        }
 
+        // Read planted flag (optional, fallback to true if pointer is valid)
+        _isBombPlanted = ReadSafe(() => moduleClient.Read<bool>(Offsets.dwPlantedC4 - 0x8), true);
+
+        // Read bomb entity fields
+        var c4Blow = ReadSafe(() => process.Read<float>(_plantedC4 + Offsets.m_flC4Blow), 0f);
+        var defuseCountDown = ReadSafe(() => process.Read<float>(_plantedC4 + Offsets.m_flDefuseCountDown), 0f);
+        _beingDefused = ReadSafe(() => process.Read<bool>(_plantedC4 + Offsets.m_bBeingDefused), false);
+
+        // Compute times
+        _timeLeft = Math.Max(c4Blow - _currentTime, 0f);
+        _defuseLeft = _beingDefused ? Math.Max(defuseCountDown - _currentTime, 0f) : 0f;
+
+        // Read bomb site
         if (_isBombPlanted)
-            _bombSite = graphics.GameProcess.Process.Read<int>(_plantedC4 + Offsets.m_nBombSite) == 1 ? "B" : "A";
+        {
+            var site = ReadSafe(() => process.Read<int>(_plantedC4 + Offsets.m_nBombSite), 0);
+            _bombSite = site == 1 ? "B" : "A";
+        }
 
-        _bombPlanted = _isBombPlanted ? $"Bomb is planted on site: {_bombSite}" : string.Empty;
-
-        graphics.GameProcess.Process.Read<bool>(_plantedC4 + Offsets.m_bBombDefused);
+        // Optional: read defused flag to keep memory access consistent (no-op)
+        _ = ReadSafe(() => process.Read<bool>(_plantedC4 + Offsets.m_bBombDefused), false);
     }
 
-    public static void Draw(Graphics.Graphics graphics)
+    // Helper to safely read memory without crashing on exceptions
+    private static T ReadSafe<T>(Func<T> readFunc, T defaultValue)
     {
-        var timerText = _isBombPlanted ? $"Time left: {_timeLeft:0.00} seconds" : " ";
-        var defuse = _isBombPlanted ? $"Defuse time: {_defuseLeft:0.00} seconds" : " ";
+        try
+        {
+            return readFunc();
+        }
+        catch
+        {
+            return defaultValue;
+        }
+    }
 
-        graphics.FontAzonix64.DrawText(default,
-            $"{_bombPlanted}{Environment.NewLine}{timerText}{Environment.NewLine}{defuse}", 0, 500, Color.WhiteSmoke);
+    public static void Draw(Graphics.ModernGraphics graphics)
+    {
+        if (!_isBombPlanted) return;
+
+        var bombText = $"Bomb planted on site: {_bombSite}";
+        var timerText = $"Time left: {_timeLeft:0.00} seconds";
+        var defuseText = _beingDefused && _defuseLeft > 0
+            ? $"Defuse time: {_defuseLeft:0.00} seconds"
+            : null;
+
+        graphics.AddText(bombText, 10, 500, SKColors.WhiteSmoke, 16);
+        graphics.AddText(timerText, 10, 520, SKColors.Orange, 14);
+        if (defuseText != null)
+        {
+            graphics.AddText(defuseText, 10, 540, SKColors.Cyan, 14);
+        }
     }
 }

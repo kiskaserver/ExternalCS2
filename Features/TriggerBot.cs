@@ -1,8 +1,8 @@
-using CS2Cheat.Data.Game;
-using CS2Cheat.Utils;
-using Keys = Process.NET.Native.Types.Keys;
+using CS2GameHelper.Data.Game;
+using CS2GameHelper.Utils;
+using System.Windows.Forms;
 
-namespace CS2Cheat.Features;
+namespace CS2GameHelper.Features;
 
 public sealed class TriggerBot : ThreadedServiceBase
 {

@@ -1,5 +1,6 @@
 /obj
-/.vs/CS2Cheat/FileContentIndex
-/.vs/CS2Cheat/v17
+/bin
+/.vs/CS2GameHelper/FileContentIndex
+/.vs/CS2GameHelper/v17
 /bin/Debug/net8.0-windows
-/.vs/CS2Cheat/DesignTimeBuild
+/.vs/CS2GameHelper/DesignTimeBuild

@@ -1,16 +1,20 @@
-﻿using System.Diagnostics;
+﻿using System.ComponentModel;
+using System.Diagnostics;
 using System.Runtime.InteropServices;
 using System.Text;
-using CS2Cheat.Core;
-using CS2Cheat.Core.Data;
-using Process.NET.Native.Types;
-using SharpDX;
+using System.Numerics;
+using CS2GameHelper.Core;
+using CS2GameHelper.Core.Data;
 using static System.Diagnostics.Process;
-using Keys = Process.NET.Native.Types.Keys;
 using Rectangle = System.Drawing.Rectangle;
 
 
-namespace CS2Cheat.Utils;
+namespace CS2GameHelper.Utils;
+
+public enum KeyboardFlags : uint
+{
+    KeyUp = 0x0002
+}
 
 public static class Utility
 {
@@ -86,22 +90,93 @@ public static class Utility
     }
 
 
+    private const uint SnapshotModules = 0x00000008;
+    private const uint SnapshotModules32 = 0x00000010;
+
     public static Module? GetModule(this System.Diagnostics.Process process, string moduleName)
     {
-        var processModule = process.GetProcessModule(moduleName);
-        return processModule is null || processModule.BaseAddress == IntPtr.Zero
-            ? null
-            : new Module(process, processModule);
+        if (process == null) throw new ArgumentNullException(nameof(process));
+        if (string.IsNullOrWhiteSpace(moduleName)) throw new ArgumentException("Module name must be provided.", nameof(moduleName));
+
+        var processModule = TryGetProcessModule(process, moduleName);
+        if (processModule != null)
+        {
+            try
+            {
+                if (processModule.BaseAddress != IntPtr.Zero)
+                {
+                    return new Module(process, processModule);
+                }
+            }
+            catch (Win32Exception)
+            {
+                // ignore and fall back to snapshot enumeration when access is denied.
+            }
+        }
+
+        if (TryGetModuleFromSnapshot(process, moduleName, out var snapshotModule))
+        {
+            return snapshotModule;
+        }
+
+        return null;
     }
 
 
-    private static ProcessModule GetProcessModule(this System.Diagnostics.Process process,
-        string moduleName)
+    private static ProcessModule? TryGetProcessModule(this System.Diagnostics.Process process, string moduleName)
     {
-        var module = process?.Modules.OfType<ProcessModule>()
-            .FirstOrDefault(a => string.Equals(a.ModuleName.ToLower(), moduleName.ToLower()));
-        if (module == null) throw new InvalidOperationException($"Module '{moduleName}' not found in process.");
-        return module;
+        try
+        {
+            return process.Modules
+                .OfType<ProcessModule>()
+                .FirstOrDefault(module => module.ModuleName.Equals(moduleName, StringComparison.OrdinalIgnoreCase));
+        }
+        catch (Win32Exception)
+        {
+            return null;
+        }
+        catch (InvalidOperationException)
+        {
+            return null;
+        }
+    }
+
+
+    private static bool TryGetModuleFromSnapshot(System.Diagnostics.Process process, string moduleName, out Module? module)
+    {
+        module = null;
+
+        var snapshot = Kernel32.CreateToolhelp32Snapshot(SnapshotModules | SnapshotModules32, (uint)process.Id);
+        if (snapshot == IntPtr.Zero || snapshot == (IntPtr)(-1))
+        {
+            return false;
+        }
+
+        try
+        {
+            var entry = new MODULEENTRY32 { dwSize = (uint)Marshal.SizeOf<MODULEENTRY32>() };
+            if (!Kernel32.Module32First(snapshot, ref entry))
+            {
+                return false;
+            }
+
+            do
+            {
+                if (!string.Equals(entry.szModule, moduleName, StringComparison.OrdinalIgnoreCase))
+                {
+                    continue;
+                }
+
+                module = new Module(process, entry.modBaseAddr, (int)entry.modBaseSize);
+                return true;
+            } while (Kernel32.Module32Next(snapshot, ref entry));
+        }
+        finally
+        {
+            Kernel32.CloseHandle(snapshot);
+        }
+
+        return false;
     }
 
 
@@ -353,7 +428,18 @@ public static class Utility
     public static T Read<T>(this Module module, int offset)
         where T : unmanaged
     {
-        return Read<T>(module.Process.Handle, module.ProcessModule.BaseAddress + offset);
+        if (module == null)
+        {
+            throw new ArgumentNullException(nameof(module));
+        }
+
+        var process = module.Process ?? throw new InvalidOperationException("Module process is not available.");
+        if (module.BaseAddress == IntPtr.Zero)
+        {
+            throw new InvalidOperationException("Module base address is not available.");
+        }
+
+        return Read<T>(process.Handle, module.BaseAddress + offset);
     }
 
 
@@ -403,44 +489,12 @@ public static class Utility
     }
 
 
-    public static Matrix GetMatrixViewport(Size screenSize)
+    public static Matrix4x4 GetMatrixViewport(Size screenSize)
     {
-        return GetMatrixViewport(new Viewport
-        {
-            X = 0,
-            Y = 0,
-            Width = screenSize.Width,
-            Height = screenSize.Height,
-            MinDepth = 0,
-            MaxDepth = 1
-        });
+        return Graphics.GraphicsMath.GetMatrixViewport(screenSize);
     }
 
-    private static Matrix GetMatrixViewport(in Viewport viewport)
-    {
-        return new Matrix
-        {
-            M11 = viewport.Width * 0.5f,
-            M12 = 0,
-            M13 = 0,
-            M14 = 0,
 
-            M21 = 0,
-            M22 = -viewport.Height * 0.5f,
-            M23 = 0,
-            M24 = 0,
-
-            M31 = 0,
-            M32 = 0,
-            M33 = viewport.MaxDepth - viewport.MinDepth,
-            M34 = 0,
-
-            M41 = viewport.X + viewport.Width * 0.5f,
-            M42 = viewport.Y + viewport.Height * 0.5f,
-            M43 = viewport.MinDepth,
-            M44 = 1
-        };
-    }
 
     #endregion
 }

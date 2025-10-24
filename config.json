@@ -1,0 +1,41 @@
+{
+  "aimBot": true,
+  "aimBotAutoShoot": true,
+  "bombTimer": true,
+  "espAimCrosshair": true,
+  "skeletonEsp": false,
+  "triggerBot": true,
+  "aimBotKey": 1,
+  "triggerBotKey": 164,
+  "teamCheck": true,
+  "esp": {
+    "box": {
+      "enabled": true,
+      "showName": true,
+      "showHealthBar": true,
+      "showHealthText": true,
+      "showDistance": true,
+      "showWeaponIcon": true,
+      "showArmor": true,
+      "showVisibilityIndicator": true,
+      "showFlags": true,
+      "enemyColor": "FF8B0000",
+      "teamColor": "FF00008B",
+      "visibleAlpha": "FF",
+      "invisibleAlpha": "88"
+    },
+    "radar": {
+      "enabled": true,
+      "size": 150,
+      "x": 50,
+      "y": 50,
+      "maxDistance": 100.0,
+      "showLocalPlayer": true,
+      "showDirectionArrow": true,
+      "enemyColor": "FFFF0000",
+      "teamColor": "FF0000FF",
+      "visibleAlpha": "FF",
+      "invisibleAlpha": "88"
+    }
+  }
+}

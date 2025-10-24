@@ -1,8 +1,8 @@
 ﻿using System.Diagnostics;
-using CS2Cheat.Core;
-using CS2Cheat.Utils;
+using CS2GameHelper.Core;
+using CS2GameHelper.Utils;
 
-namespace CS2Cheat.Data.Game;
+namespace CS2GameHelper.Data.Game;
 
 public class GameProcess : ThreadedServiceBase
 {
@@ -32,7 +32,14 @@ public class GameProcess : ThreadedServiceBase
 
     private bool WindowActive { get; set; }
 
-    public bool IsValid => WindowActive;
+    private bool WindowDetected => WindowHwnd != IntPtr.Zero && WindowRectangleClient.Width > 0 && WindowRectangleClient.Height > 0;
+
+    public bool HasWindow => WindowDetected;
+
+    public bool IsValid => Process is { HasExited: false } && ModuleClient != null && WindowDetected;
+
+    // True when the game's window exists and is the foreground window
+    public bool IsWindowActive => WindowHwnd != IntPtr.Zero && WindowHwnd == User32.GetForegroundWindow();
 
     #endregion
 
@@ -48,9 +55,15 @@ public class GameProcess : ThreadedServiceBase
 
     protected override async void FrameAction()
     {
-        if (!EnsureProcessAndModules()) InvalidateModules();
+        if (!EnsureProcessAndModules())
+        {
+            InvalidateModules();
+        }
 
-        if (!EnsureWindow()) InvalidateWindow();
+        if (!EnsureWindow())
+        {
+            InvalidateWindow();
+        }
 
         await Task.Delay(ThreadFrameSleep);
     }
@@ -74,17 +87,13 @@ public class GameProcess : ThreadedServiceBase
 
     private bool EnsureProcessAndModules()
     {
-        Process ??= System.Diagnostics.Process.GetProcessesByName(NameProcess).FirstOrDefault()!;
-        if (Process == null || Process.HasExited) return false;
-
-        if (ModuleClient == null && Process != null)
+        Process ??= System.Diagnostics.Process.GetProcessesByName(NameProcess).FirstOrDefault();
+        if (Process == null || Process.HasExited)
         {
-            var processModule = Process.Modules
-                .OfType<ProcessModule>()
-                .FirstOrDefault(m => m.ModuleName.Equals(NameModule, StringComparison.OrdinalIgnoreCase));
-            if (processModule != null)
-                ModuleClient = new Module(Process, processModule); // Pass both Process and ProcessModule as required
+            return false;
         }
+
+        ModuleClient ??= Process.GetModule(NameModule);
 
         return ModuleClient != null;
     }
@@ -93,14 +102,20 @@ public class GameProcess : ThreadedServiceBase
     private bool EnsureWindow()
     {
         WindowHwnd = User32.FindWindow(null!, NameWindow);
-        if (WindowHwnd == IntPtr.Zero) return false;
+        if (WindowHwnd == IntPtr.Zero)
+        {
+            return false;
+        }
 
         WindowRectangleClient = Utility.GetClientRectangle(WindowHwnd);
-        if (WindowRectangleClient.Width <= 0 || WindowRectangleClient.Height <= 0) return false;
+        if (WindowRectangleClient.Width <= 0 || WindowRectangleClient.Height <= 0)
+        {
+            return false;
+        }
 
         WindowActive = WindowHwnd == User32.GetForegroundWindow();
 
-        return WindowActive;
+        return true;
     }
 
     #endregion

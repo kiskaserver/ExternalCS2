@@ -1,17 +1,17 @@
 ﻿using System.Media;
-using CS2Cheat.Core.Data;
-using CS2Cheat.Data.Game;
-using CS2Cheat.Graphics;
-using CS2Cheat.Utils;
-using SharpDX;
+using System.Numerics;
+using CS2GameHelper.Core.Data;
+using CS2GameHelper.Data.Game;
+using CS2GameHelper.Graphics;
+using CS2GameHelper.Utils;
 
-namespace CS2Cheat.Data.Entity;
+namespace CS2GameHelper.Data.Entity;
 
 public class Player : EntityBase
 {
-    private Matrix MatrixViewProjection { get; set; }
-    public Matrix MatrixViewport { get; private set; }
-    public Matrix MatrixViewProjectionViewport { get; private set; }
+    private Matrix4x4 MatrixViewProjection { get; set; }
+    public Matrix4x4 MatrixViewport { get; private set; }
+    public Matrix4x4 MatrixViewProjectionViewport { get; private set; }
     private Vector3 ViewOffset { get; set; }
     public Vector3 EyePosition { get; private set; }
     private Vector3 ViewAngles { get; set; }
@@ -44,7 +44,7 @@ public class Player : EntityBase
 
         if (gameProcess.ModuleClient == null)
             throw new ArgumentNullException(nameof(gameProcess.ModuleClient), "ModuleClient cannot be null.");
-        MatrixViewProjection = Matrix.Transpose(gameProcess.ModuleClient.Read<Matrix>(Offsets.dwViewMatrix));
+        MatrixViewProjection = Matrix4x4.Transpose(gameProcess.ModuleClient.Read<Matrix4x4>(Offsets.dwViewMatrix));
         MatrixViewport = Utility.GetMatrixViewport(gameProcess.WindowRectangleClient.Size);
         MatrixViewProjectionViewport = MatrixViewProjection * MatrixViewport;
 
@@ -58,11 +58,11 @@ public class Player : EntityBase
         FFlags = gameProcess.Process.Read<int>(AddressBase + Offsets.m_fFlags);
 
         EyeDirection =
-            GraphicsMath.GetVectorFromEulerAngles(ViewAngles.X.DegreeToRadian(), ViewAngles.Y.DegreeToRadian());
+            GraphicsMath.GetVectorFromEulerAngles(GraphicsMath.DegreeToRadian(ViewAngles.X), GraphicsMath.DegreeToRadian(ViewAngles.Y));
         AimDirection = GraphicsMath.GetVectorFromEulerAngles
         (
-            (ViewAngles.X + AimPunchAngle.X * Offsets.WeaponRecoilScale).DegreeToRadian(),
-            (ViewAngles.Y + AimPunchAngle.Y * Offsets.WeaponRecoilScale).DegreeToRadian()
+            GraphicsMath.DegreeToRadian(ViewAngles.X + AimPunchAngle.X * Offsets.WeaponRecoilScale),
+            GraphicsMath.DegreeToRadian(ViewAngles.Y + AimPunchAngle.Y * Offsets.WeaponRecoilScale)
         );
 
 

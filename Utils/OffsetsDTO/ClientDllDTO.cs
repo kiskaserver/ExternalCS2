@@ -1,10 +1,12 @@
-using Newtonsoft.Json;
+using System.Text.Json.Serialization;
 
-namespace CS2Cheat.DTO.ClientDllDTO;
+#pragma warning disable CS8618
+
+namespace CS2GameHelper.DTO.ClientDllDTO;
 
 public class ClientDllDTO
 {
-    [JsonProperty("client.dll")] public ClientDll clientdll { get; set; }
+    [JsonPropertyName("client.dll")] public ClientDll clientdll { get; set; }
 }
 
 public class ClientDll

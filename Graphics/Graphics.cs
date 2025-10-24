@@ -1,8 +1,10 @@
-﻿using System.Windows.Threading;
-using CS2Cheat.Core.Data;
-using CS2Cheat.Data.Game;
-using CS2Cheat.Features;
-using CS2Cheat.Utils;
+﻿using System.IO;
+using System.Windows.Threading;
+using CS2GameHelper.Core;
+using CS2GameHelper.Core.Data;
+using CS2GameHelper.Data.Game;
+using CS2GameHelper.Features;
+using CS2GameHelper.Utils;
 using SharpDX;
 using SharpDX.Direct3D9;
 using static System.Windows.Application;
@@ -10,7 +12,7 @@ using Color = SharpDX.Color;
 using Font = SharpDX.Direct3D9.Font;
 using FontWeight = SharpDX.Direct3D9.FontWeight;
 
-namespace CS2Cheat.Graphics;
+namespace CS2GameHelper.Graphics;
 
 public class Graphics : ThreadedServiceBase
 {
@@ -90,9 +92,11 @@ public class Graphics : ThreadedServiceBase
 
     private void InitializeFonts()
     {
-        FontAzonix64 = new Font(_device, CreateFontDescription("Tahoma", 32));
-        FontConsolas32 = new Font(_device, CreateFontDescription("Verdana", 12));
-        Undefeated = new Font(_device, CreateFontDescription("undefeated", 12, FontCharacterSet.Default));
+    FontAzonix64 = new Font(_device, CreateFontDescription("Tahoma", 32));
+    FontConsolas32 = new Font(_device, CreateFontDescription("Verdana", 12));
+
+    var undefeatedFace = FontLoader.EnsureFont(Path.Combine("assets", "fonts", "undefeated.ttf"));
+    Undefeated = new Font(_device, CreateFontDescription(undefeatedFace, 12, FontCharacterSet.Default));
     }
 
     private static FontDescription CreateFontDescription(string faceName, int height,

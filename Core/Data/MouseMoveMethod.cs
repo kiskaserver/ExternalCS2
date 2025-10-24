@@ -1,4 +1,4 @@
-namespace CS2Cheat.Core.Data;
+namespace CS2GameHelper.Core.Data;
 
 public enum MouseMoveMethod
 {

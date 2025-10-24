@@ -1,18 +1,15 @@
-using SharpDX;
+using System.Numerics;
 
-namespace CS2Cheat.Graphics;
+namespace CS2GameHelper.Graphics;
 
 public readonly struct Plane3D
 {
     public readonly Vector3 Normal;
-
-
     private readonly float _distance;
-
 
     private Plane3D(Vector3 normal, float distance)
     {
-        Normal = normal.GetNormalized();
+        Normal = Vector3.Normalize(normal);
         _distance = distance;
     }
 
@@ -20,7 +17,6 @@ public readonly struct Plane3D
         this(normal, -Vector3.Dot(normal, point))
     {
     }
-
 
     public (Vector3 planeOrigin, Vector3 vector) ProjectVector(Vector3 vector)
     {

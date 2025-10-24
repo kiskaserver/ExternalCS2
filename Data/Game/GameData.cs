@@ -1,7 +1,7 @@
-﻿using CS2Cheat.Data.Entity;
-using CS2Cheat.Utils;
+﻿using CS2GameHelper.Data.Entity;
+using CS2GameHelper.Utils;
 
-namespace CS2Cheat.Data.Game;
+namespace CS2GameHelper.Data.Game;
 
 public class GameData : ThreadedServiceBase
 {

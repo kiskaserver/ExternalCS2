@@ -1,0 +1,51 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <OutputType>Exe</OutputType>
+        <TargetFramework>net8.0-windows</TargetFramework>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+        <UseWindowsForms>true</UseWindowsForms>
+        <UseWpf>true</UseWpf>
+        <LangVersion>latest</LangVersion>
+        <Platforms>AnyCPU;x64;x86</Platforms>
+        <ApplicationIcon>assets\logo.ico</ApplicationIcon>
+        <Version>1.7</Version>
+        <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
+    </PropertyGroup>
+
+    <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">
+        <PlatformTarget>x64</PlatformTarget>
+        <Prefer32bit>false</Prefer32bit>
+    </PropertyGroup>
+
+    <PropertyGroup Condition=" '$(Configuration)' == 'Release' ">
+        <PlatformTarget>AnyCPU</PlatformTarget>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <Compile Remove="Graphics\Graphics.cs" />
+        <PackageReference Include="Silk.NET.OpenGL" Version="2.21.0"/>
+        <PackageReference Include="Silk.NET.Windowing" Version="2.21.0"/>
+        <PackageReference Include="Silk.NET.Input" Version="2.21.0"/>
+        <PackageReference Include="System.Text.Json" Version="8.0.5"/>
+        <PackageReference Include="System.Numerics.Vectors" Version="4.5.0"/>
+        <PackageReference Include="SkiaSharp" Version="2.88.8"/>
+        <PackageReference Include="System.Drawing.Common" Version="8.0.8"/>
+        <PackageReference Include="TorchSharp-cuda-windows" Version="0.105.1" />
+        <!--
+            If you don't have a CUDA-capable GPU or prefer CPU-only training/execution,
+            replace the CUDA package above with the CPU package below. Training will
+            run on the CPU and will be noticeably slower but more portable.
+
+            <PackageReference Include="TorchSharp-windows" Version="0.105.1" />
+        -->
+    </ItemGroup>
+
+    <ItemGroup>
+        <None Include="assets\fonts\undefeated.ttf">
+            <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+        </None>
+    </ItemGroup>
+
+</Project>

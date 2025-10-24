@@ -1,9 +1,21 @@
-using CS2Cheat.Core.Data;
-using CS2Cheat.Data.Game;
-using CS2Cheat.Utils;
-using SharpDX;
+using CS2GameHelper.Core.Data;
+using System.Numerics;
+using CS2GameHelper.Data.Game;
+using CS2GameHelper.Utils;
 
-namespace CS2Cheat.Data.Entity;
+namespace CS2GameHelper.Data.Entity;
+
+[Flags]
+public enum EntityFlags
+{
+    None = 0,
+    OnGround = 1,
+    PartiallyInWater = 2,
+    FullyInWater = 4,
+    NoInterpolation = 8,
+    OnFire = 16,
+    StaticProp = 32
+}
 
 public abstract class EntityBase
 {
@@ -17,13 +29,21 @@ public abstract class EntityBase
     protected Vector3 Origin { get; private set; }
     public int ShotsFired { get; private set; }
 
+    // === НОВЫЕ ПОЛЯ ===
+    public Vector3 Position => Origin; // Position = Origin в CS2
+    public int Armor { get; private set; }
+    public bool HasHelmet { get; private set; }
+    public bool IsVisible { get; private set; }
+    public EntityFlags Flags { get; private set; }
+    public Vector2? ViewAngle { get; private set; }
+    public bool IsReloading { get; private set; }
+    public bool IsDefusing { get; private set; }
+
     private IntPtr CurrentWeapon { get; set; }
     public string CurrentWeaponName { get; private set; } = null!;
 
     private short WeaponIndex { get; set; }
-
     public Vector3 Velocity { get; private set; }
-
 
     public virtual bool IsAlive()
     {
@@ -55,10 +75,41 @@ public abstract class EntityBase
         Origin = gameProcess.Process.Read<Vector3>(AddressBase + Offsets.m_vOldOrigin);
         ShotsFired = gameProcess.Process.Read<int>(AddressBase + Offsets.m_iShotsFired);
 
-        CurrentWeapon = gameProcess.Process.Read<IntPtr>(AddressBase + Offsets.m_pClippingWeapon);
-        WeaponIndex = gameProcess.Process.Read<short>(CurrentWeapon + Offsets.m_AttributeManager + Offsets.m_Item +
-                                                      Offsets.m_iItemDefinitionIndex);
-        CurrentWeaponName = Enum.GetName(typeof(WeaponIndexes), WeaponIndex)!;
+        // === Читаем недостающие поля ===
+        Armor = gameProcess.Process.Read<int>(AddressBase + Offsets.m_ArmorValue);
+        HasHelmet = gameProcess.Process.Read<bool>(AddressBase + Offsets.m_bHasHelmet);
+        IsVisible = gameProcess.Process.Read<bool>(AddressBase + Offsets.m_bSpotted);
+        Flags = (EntityFlags)gameProcess.Process.Read<int>(AddressBase + Offsets.m_fFlags);
+        IsDefusing = gameProcess.Process.Read<bool>(AddressBase + Offsets.m_bBeingDefused);
+
+        // ViewAngle (углы камеры)
+        try
+        {
+            var viewPunch = gameProcess.Process.Read<Vector2>(AddressBase + Offsets.m_angEyeAngles);
+            ViewAngle = viewPunch;
+        }
+        catch
+        {
+            ViewAngle = null;
+        }
+
+        // Оружие
+        try
+        {
+            CurrentWeapon = gameProcess.Process.Read<IntPtr>(AddressBase + Offsets.m_pClippingWeapon);
+            var weaponIndexAddress = CurrentWeapon + Offsets.m_AttributeManager + Offsets.m_Item + Offsets.m_iItemDefinitionIndex;
+            WeaponIndex = gameProcess.Process.Read<short>(weaponIndexAddress);
+
+            var name = Enum.GetName(typeof(WeaponIndexes), WeaponIndex);
+            CurrentWeaponName = string.IsNullOrEmpty(name) ? $"weapon_{WeaponIndex}" : name;
+        }
+        catch
+        {
+            CurrentWeapon = IntPtr.Zero;
+            WeaponIndex = -1;
+            CurrentWeaponName = string.Empty;
+        }
+
         Velocity = gameProcess.Process.Read<Vector3>(AddressBase + Offsets.m_vecAbsVelocity);
 
         return true;

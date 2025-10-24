@@ -1,92 +1,249 @@
-## FullyExternalCS2
+# CS2GameHelper / ExternalCS2
 
-### Description
+> Important: This project is for research and educational purposes only. Using these tools to gain an unfair advantage in online multiplayer games violates Valve's Terms of Service and will likely result in a permanent account ban.
 
-FullyExternalCS2 is an external cheat for Counter-Strike 2 **that does not write to the game memory**. \
-It was created for the _purpose_ of _improving_ Windows API skills.
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
-[Please note that.](https://github.com/sweeperxz/FullyExternalCS2/issues/6#issuecomment-1919053959)
+## Table of Contents
 
-**❗❗❗IF YOU GOT VAC BAN THEN CREATE AN ISSUE WITH THE ASSOCIATED TEMPLATE❗❗❗**
+- [Project Overview](#project-overview)
+- [Quick Start — Build & Run](#quick-start--build--run)
+- [Neural Network Backend: GPU vs CPU](#neural-network-backend-gpu-vs-cpu)
+- [Tested Environment](#tested-environment)
+- [Repository Structure](#repository-structure)
+- [Configuration (config.json)](#configuration-configjson)
+- [AimBot & Training internals](#aimbot--training-internals)
+- [Debugging & Common Issues](#debugging--common-issues)
+- [Offsets / DTO Auto-update](#offsets--dto-auto-update)
+- [License](#license)
+- [Contributing](#contributing)
+- [Contact / Notes](#contact--notes)
 
-![SS](assets/photo.png)
+## Project Overview
 
-### Features
+`ExternalCS2` (distributed as the `CS2GameHelper` assembly) is a Windows desktop application written in .NET 8 (C#). It inspects and interacts with the Counter-Strike 2 (CS2) client process from the outside — without injecting any code into the game itself.
 
-#### AimBot
+The project contains helper modules for visualization and automation, including:
 
-- Key activation with RCS (default = LBUTTON)
-- Visibility check
+- Self-learning AimBot
+- TriggerBot
+- ESP (Extra Sensory Perception)
+- Radar
+- And more!
 
-#### Esp
+It is intended as a research and learning platform for exploring game internals, memory reading, and external tooling.
 
-- Skeleton (Color team)
-- Box with health bar
-- Health numbers
-- Name
-- Enemy weapon icon (_**for correct work of icons it is necessary to install the font you download in Releases**_)
-- Enemy flags (Scoped, Flashed, Shifting, Shifting in scope)
-- Team Check (if you want to see only enemies or teammates, you can change it in the config file)
+This project was originally forked from `CS2External` by sweeperxz but has been almost completely rewritten. The AimBot and ESP were implemented from the ground up with new architecture and advanced features.
 
-#### Other Visuals
+> **Legal & Ethical Notice**
 
-- Aim Crosshair
-- [Bomb timer](https://streamable.com/ylouzc)
+This software is provided strictly for research, educational, and local testing purposes. The authors do not condone using this software to:
 
-#### Trigger Bot
+- Gain unfair advantages in online multiplayer games.
+- Violate Valve/CS2 EULA or VAC policies.
+- Perform actions that could cause account suspension, bans, or legal consequences.
 
-- Key activation (default = LAlt)
-- [No Spread](https://streamable.com/9ltv4n)
+Use responsibly and only in permitted environments.
 
-#### Miscellaneous
+## Quick Start — Build & Run
 
-- [BunnyHop](https://streamable.com/3r09m1) ( [Read this](https://github.com/sweeperxz/FullyExternalCS2/blob/151355b47373acdc3ccaa6f526e94388c4e71f2b/Data/Entity/Player.cs#L64) )
-- OBS Bypass
-- Hitsound (**_in the same folder with the cheat there should be a file called "hit.wav"_**)
-- Basic Config with hotkeys. (if you want to change the default keys watch link and replace keycode whatever u
-  want [Read this](https://github.com/lolp1/Process.NET/blob/ce9ac9cceb2afb30c9288495615c6f3aa34bc1f8/src/Process.NET/Native/Types/NativeEnums.cs#L235))
+### Requirements
 
-#### System
+- OS: Windows 10/11 (x64)
+- .NET SDK: 8.0
+- IDE: Visual Studio 2022/2023+ or the `dotnet` CLI
 
-- Auto update offsets
+### Commands
 
-### Getting started
+```powershell
+# Build in Debug mode
+dotnet build .\CS2GameHelper.csproj -c Debug
 
-**Dependencies**
+# Run the application
+dotnet run --project .\CS2GameHelper.csproj -c Debug
 
-```cs
-    <ItemGroup>
-        <PackageReference Include="GameOverlay.Net" Version="4.3.1"/>
-        <PackageReference Include="Overlay.NET" Version="1.0.2"/>
-        <PackageReference Include="PresentationFramework" Version="4.6.0"/>
-        <PackageReference Include="SharpDX.Direct3D9" Version="4.2.0"/>
-        <PackageReference Include="SharpDX.DXGI" Version="4.2.0"/>
-    </ItemGroup>
+# Publish a self-contained release for Windows x64
+dotnet publish .\CS2GameHelper.csproj -c Release -r win-x64 -o .\Publish\CS2GameHelper
 ```
 
-**Installation**
+### Output locations
 
-```bash
-git clone https://github.com/sweeperxz/FullyExternalCS2.git
-cd FullyExternalCS2
+- `bin/Debug/net8.0-windows/`
+- `bin/Release/net8.0-windows/`
+- `Publish/CS2GameHelper/`
+
+## Neural Network Backend: GPU vs CPU
+
+The project uses TorchSharp.
+
+Default (GPU-accelerated) package in `CS2GameHelper.csproj`:
+
+```xml
+<PackageReference Include="TorchSharp-cuda-windows" Version="0.105.1" />
 ```
 
-### Starting the program
+CPU-only alternative:
 
-```bash
-dotnet build
-dotnet run
+```xml
+<PackageReference Include="TorchSharp-windows" Version="0.105.1" />
 ```
 
-### Help
+Note: CPU training/inference is much slower and more CPU-intensive. Use GPU for best performance.
 
-If you have issues or have questions, check out the Issues section of the GitHub project page.
+## Tested Environment
 
-### Authors
+- CPU: AMD Ryzen 5 3600
+- GPU: ASUS TUF Gaming GeForce RTX 3060 Ti (8GB)
+- RAM: 32GB DDR4 3200MHz
+- OS: Windows 11 (24H2)
 
-- sweeperxz - Developer/Engineer
+## Repository Structure
 
-## Star History
+```
+ExternalCS2/
+├── Core/                   # Low-level utilities (WinAPI, AimTrainer)
+├── Data/                   # Data models (players, entities, game state)
+├── Features/               # Core modules (AimBot, TriggerBot, ESP, Radar)
+├── Graphics/               # Rendering and math utilities
+├── Utils/                  # Helper services (config, offsets, hooks)
+├── assets/                 # Fonts and other resources
+├── CS2GameHelper.csproj    # Project file
+├── config.json             # Runtime configuration
+└── Program.cs              # Application entry point
+```
 
-[![Star History Chart](https://api.star-history.com/svg?repos=sweeperxz/FullyExternalCS2&type=Date)](https://star-history.com/#sweeperxz/FullyExternalCS2&Date)
+**Important DTOs**
+
+- `Data/Offsets/ClientDllDTO.cs` — automatically updated from: https://github.com/sezzyaep/CS2-OFFSETS
+- `Data/Offsets/OffsetsDTO.cs` — automatically updated from: https://github.com/sezzyaep/CS2-OFFSETS
+
+These files are updated automatically by the project's update script (see `Utils/OffsetsUpdater` or CI steps in your repository, if configured). Keeping these DTOs up to date is critical after game updates.
+
+## Configuration (config.json)
+
+Below is the default configuration file generated on first run. Use this as a template and adjust per your needs.
+
+```json
+{
+  "aimBot": true,
+  "aimBotAutoShoot": true,
+  "bombTimer": true,
+  "espAimCrosshair": true,
+  "skeletonEsp": false,
+  "triggerBot": true,
+  "aimBotKey": 1,
+  "triggerBotKey": 164,
+  "teamCheck": true,
+  "esp": {
+    "box": {
+      "enabled": true,
+      "showName": true,
+      "showHealthBar": true,
+      "showHealthText": true,
+      "showDistance": true,
+      "showWeaponIcon": true,
+      "showArmor": true,
+      "showVisibilityIndicator": true,
+      "showFlags": true,
+      "enemyColor": "FF8B0000",
+      "teamColor": "FF00008B",
+      "visibleAlpha": "FF",
+      "invisibleAlpha": "88"
+    },
+    "radar": {
+      "enabled": true,
+      "size": 150,
+      "x": 50,
+      "y": 50,
+      "maxDistance": 100.0,
+      "showLocalPlayer": true,
+      "showDirectionArrow": true,
+      "enemyColor": "FFFF0000",
+      "teamColor": "FF0000FF",
+      "visibleAlpha": "FF",
+      "invisibleAlpha": "88"
+    }
+  }
+}
+```
+
+### Global toggles
+
+- `aimBot` (bool): Master switch for AimBot.
+- `aimBotAutoShoot` (bool): If true, the AimBot will automatically trigger mouse clicks when a valid shot condition is met.
+- `bombTimer` (bool): Enables an on-screen bomb timer UI element.
+- `espAimCrosshair` (bool): Draws an auxiliary crosshair where the AimBot predicts the shot will land.
+- `skeletonEsp` (bool): When true, draws skeletal overlay instead of or in addition to bounding boxes.
+- `triggerBot` (bool): Master switch for TriggerBot.
+- `aimBotKey`, `triggerBotKey` (int): Virtual-key codes for hotkeys (Windows VK codes).
+- `teamCheck` (bool): If true, filters out teammates.
+
+### `esp.box` settings
+
+- `enabled` (bool): Turn box-style ESP on/off.
+- `showName`, `showHealthBar`, `showHealthText`, `showDistance`, `showWeaponIcon`, `showArmor`, `showVisibilityIndicator`, `showFlags` (bools): Visual options.
+- `enemyColor`, `teamColor` (string): ARGB hex, e.g. `FF8B0000`.
+- `visibleAlpha`, `invisibleAlpha` (string): Hex alpha values.
+
+### `esp.radar` settings
+
+- `enabled` (bool): Toggle radar.
+- `size`, `x`, `y` (number): Pixel size and offset.
+- `maxDistance` (float): Max world distance shown on radar.
+- `showLocalPlayer`, `showDirectionArrow` (bool): Local player indicators.
+
+## AimBot & Training internals
+
+- `HumanReactThreshold` & `SuppressMs`: AimBot monitors raw mouse input and suppresses bot movement for a short window when user input is detected. These are defined in `Core/Humanization`.
+- `_aiAggressiveness`: Adaptive parameter derived from recent user movement; influences smoothing and FOV.
+- `AimTrainer`: Statistical correction stored per-distance bucket (see `Core/AimTrainer.cs`).
+- `NeuralAimNetwork`: TorchSharp model trained online (see `Core/NeuralAimNetwork.cs`).
+
+More detailed design notes and an explanation of how AimBot works are available in `AimBot.md` (field-by-field, algorithm steps, training details).
+
+## Debugging & Common Issues
+
+- Antivirus / Windows Defender: Low-level hooks and external process reads may trigger heuristics. Run in a controlled testing environment or add an exception if trusted.
+- Administrator privileges: Some features may require elevated rights.
+- Outdated offsets: Keep `ClientDllDTO.cs` and `OffsetsDTO.cs` updated from https://github.com/sezzyaep/CS2-OFFSETS.
+- High CPU with CPU TorchSharp: Consider switching to CUDA or reduce training frequency.
+
+## Offsets / DTO Auto-update
+
+DTOs are kept current via the CS2-OFFSETS repository:
+
+Source: https://github.com/sezzyaep/CS2-OFFSETS
+
+If your copy is stale after a CS2 update, run the updater or pull the latest DTOs from that repository.
+
+## License
+
+This project is published under the MIT License.
+See the full license in the `LICENSE` file at the project root.
+
+This project is distributed under the MIT license. Refer to `LICENSE` for details.
+
+## Contributing
+
+Contributions are welcome for research and defensive/educational purposes. Please open PRs for:
+
+- Fixing bugs
+- Improving training stability / reducing CPU usage
+- Adding documented, opt-in features
+- CI improvements that safely update Offsets DTOs
+
+Please avoid adding code or instructions that make the project trivially usable for cheating in live public matches.
+
+## Contact / Notes
+
+If you'd like a more compact README and a separate `CONFIG_REFERENCE.md` that documents every `config.json` field with types and code references, tell me which format you prefer and I will generate both files.
+
+Discord: `frcadm`
+
+Running notes
+- You can run the built executable directly from the `Publish/CS2GameHelper/` folder or from `bin/Release/net8.0-windows/` — run the `.exe` to start the helper.
+- Administrator privileges are required for some features (global hooks, reading other processes). Run the executable as Administrator.
+- The game (Counter-Strike 2) must be running and in a playable state for the tool to read game memory; start CS2 before launching the helper or attach while running.
+- This tool is external: it reads memory and draws in a separate process/window. By default it is not injected into the game process and is typically not visible to game-capture modes (e.g., OBS Game Capture) or the Discord in-game overlay. If you need to capture it, consider using Display Capture.
+
 

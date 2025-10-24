@@ -1,9 +1,9 @@
 using System.Collections.Concurrent;
-using CS2Cheat.Data.Game;
-using CS2Cheat.Utils;
-using SharpDX;
+using System.Numerics;
+using CS2GameHelper.Data.Game;
+using CS2GameHelper.Utils;
 
-namespace CS2Cheat.Data.Entity;
+namespace CS2GameHelper.Data.Entity;
 
 public class Entity : EntityBase
 {

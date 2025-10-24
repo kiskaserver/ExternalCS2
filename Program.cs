@@ -1,91 +1,101 @@
-using CS2Cheat.Data.Game;
-using CS2Cheat.Features;
-using CS2Cheat.Graphics;
-using CS2Cheat.Utils;
-using static CS2Cheat.Core.User32;
-using Application = System.Windows.Application;
+using CS2GameHelper.Core;
+using CS2GameHelper.Data.Game;
+using CS2GameHelper.Features;
+using CS2GameHelper.Graphics;
+using CS2GameHelper.Utils;
 
-namespace CS2Cheat;
+namespace CS2GameHelper;
 
-public class Program :
-    Application,
-    IDisposable
+public sealed class Program : IDisposable
 {
+    private readonly GameProcess _gameProcess;
+    private readonly GameData _gameData;
+    private readonly ModernGraphics _graphics;
+    private readonly TriggerBot _triggerBot;
+    private readonly AimBot _aimBot;
+    private readonly BombTimer _bombTimer;
+    private bool _disposed;
+
     private Program()
     {
-        Offsets.UpdateOffsets();
-        Startup += (_, _) => InitializeComponent();
-        Exit += (_, _) => Dispose();
-    }
+        Offsets.UpdateOffsets().GetAwaiter().GetResult();
+        
+        var features = ConfigManager.Load();
 
-    private GameProcess GameProcess { get; set; } = null!;
+        _gameProcess = new GameProcess();
+        _gameProcess.Start();
 
-    private GameData GameData { get; set; } = null!;
+        _gameData = new GameData(_gameProcess);
+        _gameData.Start();
 
-    private WindowOverlay WindowOverlay { get; set; } = null!;
+        _graphics = new ModernGraphics(_gameProcess, _gameData);
+        _graphics.Start();
 
-    private Graphics.Graphics Graphics { get; set; } = null!;
+        _triggerBot = new TriggerBot(_gameProcess, _gameData);
+        if (features.TriggerBot)
+        {
+            _triggerBot.Start();
+        }
 
-    private TriggerBot Trigger { get; set; } = null!;
+        _aimBot = new AimBot(_gameProcess, _gameData);
+        if (features.AimBot)
+        {
+            _aimBot.Start();
+        }
 
-    private AimBot AimBot { get; set; } = null!;
-
-    private BombTimer BombTimer { get; set; } = null!;
-
-    public void Dispose()
-    {
-        GameProcess.Dispose();
-        GameProcess = default!;
-
-        GameData.Dispose();
-        GameData = default!;
-
-        WindowOverlay.Dispose();
-        WindowOverlay = default!;
-
-        Graphics.Dispose();
-        Graphics = default!;
-
-        Trigger.Dispose();
-        Trigger = default!;
-
-        AimBot.Dispose();
-        AimBot = default!;
-
-        BombTimer.Dispose();
-        BombTimer = default!;
+        _bombTimer = new BombTimer(_graphics);
+        if (features.BombTimer)
+        {
+            _bombTimer.Start();
+        }
     }
 
     public static void Main()
     {
-        new Program().Run();
+        User32.TryEnablePerMonitorDpiAwareness();
+
+        using var program = new Program();
+
+        Console.WriteLine("CS2 helper started. Press 'q' to quit.");
+        while (true)
+        {
+            if (Console.KeyAvailable)
+            {
+                var key = Console.ReadKey(true).Key;
+                if (key == ConsoleKey.Q)
+                {
+                    break;
+                }
+                // R hotkey removed
+            }
+
+            Thread.Sleep(100);
+        }
     }
 
-    private void InitializeComponent()
+    public void Dispose()
     {
-        var features = ConfigManager.Load();
-        GameProcess = new GameProcess();
-        GameProcess.Start();
+        Dispose(true);
+        GC.SuppressFinalize(this);
+    }
 
-        GameData = new GameData(GameProcess);
-        GameData.Start();
+    private void Dispose(bool disposing)
+    {
+        if (_disposed)
+        {
+            return;
+        }
 
-        WindowOverlay = new WindowOverlay(GameProcess);
-        WindowOverlay.Start();
+        if (disposing)
+        {
+            _bombTimer.Dispose();
+            _aimBot.Dispose();
+            _triggerBot.Dispose();
+            _graphics.Dispose();
+            _gameData.Dispose();
+            _gameProcess.Dispose();
+        }
 
-        Graphics = new Graphics.Graphics(GameProcess, GameData, WindowOverlay);
-        Graphics.Start();
-
-        Trigger = new TriggerBot(GameProcess, GameData);
-        if (features.TriggerBot) Trigger.Start();
-
-
-        AimBot = new AimBot(GameProcess, GameData);
-        if (features.AimBot) AimBot.Start();
-
-        BombTimer = new BombTimer(Graphics);
-        if (features.BombTimer) BombTimer.Start();
-
-        SetWindowDisplayAffinity(WindowOverlay!.Window.Handle, 0x00000011); //obs bypass
+        _disposed = true;
     }
 }

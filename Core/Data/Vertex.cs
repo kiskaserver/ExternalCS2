@@ -1,11 +1,11 @@
 using System.Runtime.InteropServices;
-using SharpDX;
+using System.Numerics;
 
-namespace CS2Cheat.Core.Data;
+namespace CS2GameHelper.Core.Data;
 
 [StructLayout(LayoutKind.Sequential)]
 public struct Vertex
 {
     public Vector4 Position;
-    public ColorBGRA Color;
+    public uint Color;
 }

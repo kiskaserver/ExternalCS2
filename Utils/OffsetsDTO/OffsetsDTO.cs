@@ -1,16 +1,16 @@
-using Newtonsoft.Json;
+using System.Text.Json.Serialization;
 
-namespace CS2Cheat.Utils.DTO;
+namespace CS2GameHelper.Utils.DTO;
 
 public class OffsetsDTO
 {
-    [JsonProperty("client.dll")] public ClientDll? clientdll { get; set; }
+    [JsonPropertyName("client.dll")] public ClientDll? clientdll { get; set; }
 
-    [JsonProperty("engine2.dll")] public Engine2Dll? engine2dll { get; set; }
+    [JsonPropertyName("engine2.dll")] public Engine2Dll? engine2dll { get; set; }
 
-    [JsonProperty("inputsystem.dll")] public InputsystemDll? inputsystemdll { get; set; }
+    [JsonPropertyName("inputsystem.dll")] public InputsystemDll? inputsystemdll { get; set; }
 
-    [JsonProperty("matchmaking.dll")] public MatchmakingDll? matchmakingdll { get; set; }
+    [JsonPropertyName("matchmaking.dll")] public MatchmakingDll? matchmakingdll { get; set; }
 }
 
 public class ClientDll
