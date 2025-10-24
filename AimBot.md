@@ -1,4 +1,3 @@
-````md
 # AimBot — Detailed Design & Operation
 
 This document explains how the project's AimBot works, where the code lives, key algorithms and data flows, and practical guidance for tuning and troubleshooting. It complements `CONFIG_REFERENCE.md` and the code in `Features/AimBot.cs` and `Core/AimTrainer.cs`.
