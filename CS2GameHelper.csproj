@@ -40,6 +40,10 @@
 
             <PackageReference Include="TorchSharp-windows" Version="0.105.1" />
         -->
+        <!-- Test helpers (added to main project to ensure test packages are available during CI/build) -->
+        <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.0.0" PrivateAssets="all" />
+        <PackageReference Include="xunit" Version="2.5.3" PrivateAssets="all" />
+        <PackageReference Include="xunit.runner.visualstudio" Version="2.5.3" PrivateAssets="all" />
     </ItemGroup>
 
     <ItemGroup>
