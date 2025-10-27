@@ -27,6 +27,15 @@ public sealed class Module : IDisposable
 
     public int Size { get; }
 
+    // Convenience instance wrapper so callers can use module.Read<T>(offset)
+    // without depending on the extension method resolution. This forwards
+    // to the Utility.Read extension implementation.
+    public T Read<T>(int offset)
+        where T : unmanaged
+    {
+        return Utility.Read<T>(this, offset);
+    }
+
     public void Dispose()
     {
         Process?.Dispose();

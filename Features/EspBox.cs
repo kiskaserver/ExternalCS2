@@ -24,6 +24,8 @@ public static class EspBox
 {
     private const int OutlineThickness = 1;
     
+    // Константа для перевода игровых единиц в метры в CS2
+    private const float UnitsToMeters = 0.0254f; // 1 юнит = 2.54 см в CS2
 
     private static readonly Dictionary<string, string> GunIcons = new(StringComparer.OrdinalIgnoreCase)
     {
@@ -86,8 +88,6 @@ public static class EspBox
 
             DrawEntityEsp(graphics, player, entity, bbox.Value, espConfig);
         }
-
-
     }
 
     private static void DrawEntityEsp(
@@ -129,25 +129,38 @@ public static class EspBox
             textY += 14;
         }
 
-        // === Дистанция ===
+        // === Дистанция (исправлено для CS2) ===
         if (config.ShowDistance)
         {
-            float distance = Vector3.Distance(localPlayer.Position, entity.Position);
+            float distance = Vector3.Distance(localPlayer.Position, entity.Position) * UnitsToMeters;
             string distText = $"{distance:0}m";
             int distX = (int)((topLeft.X + bottomRight.X) / 2f);
             graphics.DrawText(distText, distX, (int)textY, EspColor.White);
             textY += 14;
         }
 
-        // === Полоска здоровья ===
+        // === Полоска здоровья (исправлено) ===
         if (config.ShowHealthBar)
         {
             float healthBarLeft = topLeft.X - 8f;
-            float filledHeight = height * Math.Clamp(entity.Health / 100f, 0f, 1f);
-            float filledTopY = bottomRight.Y - filledHeight;
-
-            graphics.DrawRect(healthBarLeft, filledTopY, 4f, filledHeight, EspColor.Green);
-            graphics.DrawRectOutline(healthBarLeft - 1, filledTopY - 1, 6f, height + 2, EspColor.Black);
+            float healthBarHeight = height;
+            float healthBarWidth = 4f;
+            
+            // Расчет заполненной части полоски здоровья
+            float healthPercentage = Math.Clamp(entity.Health / 100f, 0f, 1f);
+            float filledHeight = healthBarHeight * healthPercentage;
+            
+            // Верхняя позиция заполненной части
+            float filledTopY = topLeft.Y + (healthBarHeight - filledHeight);
+            
+            // Рисуем фон полоски здоровья
+            graphics.DrawRect(healthBarLeft, topLeft.Y, healthBarWidth, healthBarHeight, 0x80000000);
+            
+            // Рисуем заполненную часть
+            graphics.DrawRect(healthBarLeft, filledTopY, healthBarWidth, filledHeight, EspColor.Green);
+            
+            // Рисуем обводку
+            graphics.DrawRectOutline(healthBarLeft - 1, topLeft.Y - 1, healthBarWidth + 2, healthBarHeight + 2, EspColor.Black);
         }
 
         // === Текст здоровья ===

@@ -77,7 +77,7 @@ namespace CS2GameHelper.Core
             }
 
             _optimizer = torch.optim.Adam(_network.parameters(), lr: 0.001);
-            Console.WriteLine("[NeuralAimTrainer] Нейросеть инициализирована.");
+            Console.WriteLine("[NeuralAimBot] Neural network initialized.");
         }
 
         public void AddDataPoint(Vector3 targetPos, Vector3 playerPos, Vector2 angles)
@@ -118,7 +118,7 @@ namespace CS2GameHelper.Core
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[NeuralAimTrainer] Ошибка при получении коррекции: {ex.Message}");
+                Console.WriteLine($"[NeuralAimBot ERROR] Error getting correction: {ex.Message}\n{ex.StackTrace}");
                 return Vector2.Zero;
             }
         }
@@ -158,7 +158,7 @@ namespace CS2GameHelper.Core
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine($"[NeuralAimTrainer] Ошибка в цикле обучения: {ex.Message}");
+                    Console.WriteLine($"[NeuralAimBot ERROR] Error in training loop: {ex.Message}\n{ex.StackTrace}");
                 }
 
                 _trainingSignal.Reset();
@@ -181,7 +181,7 @@ namespace CS2GameHelper.Core
                 _network.Dispose();
             }
             _optimizer?.Dispose();
-            Console.WriteLine("[NeuralAimTrainer] Ресурсы освобождены, модель сохранена.");
+            Console.WriteLine("[NeuralAimBot] Resources disposed, model saved.");
         }
     }
 

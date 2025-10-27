@@ -58,11 +58,39 @@ public abstract class ThreadedServiceBase : IDisposable
         }
 
         _isRunning = false;
-        thread.Interrupt();
 
-        if (!thread.Join(ThreadTimeout))
+        // Only attempt to interrupt/join if the thread was started and is alive.
+        // Calling Interrupt/Join on an unstarted thread throws ThreadStateException.
+        if (thread.IsAlive)
         {
-            thread.Join();
+            try
+            {
+                thread.Interrupt();
+            }
+            catch (ThreadStateException)
+            {
+                // thread state changed between checks; ignore and attempt to join below if possible
+            }
+
+            try
+            {
+                if (!thread.Join(ThreadTimeout))
+                {
+                    // fallback: wait indefinitely but guard against ThreadStateException
+                    try
+                    {
+                        thread.Join();
+                    }
+                    catch (ThreadStateException)
+                    {
+                        // ignore
+                    }
+                }
+            }
+            catch (ThreadStateException)
+            {
+                // ignore
+            }
         }
     }
 

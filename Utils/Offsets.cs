@@ -52,6 +52,25 @@ public abstract class Offsets
     public static int m_bInReload;
     public static int m_angEyeAngles;
     public static int m_CBodyComponent;
+    public static int m_bGameRestart;
+    // Backwards-compatible grouped offsets for older code that expects nested types
+    public static class engine2_dll
+    {
+        public static int dwNetworkGameClient;
+        public static int dwNetworkGameClient_serverTickCount;
+        public static int dwBuildNumber;
+        public static int dwWindowHeight;
+        public static int dwWindowWidth;
+    }
+
+    public static class client_dll
+    {
+        public static int dwPlantedC4;
+        public static int dwLocalPlayerPawn;
+        public static int dwViewAngles;
+        public static int dwViewMatrix;
+        public static int dwGameRules;
+    }
     public static int m_vecOrigin;
 
     public static readonly Dictionary<string, int> Bones = new()
@@ -100,6 +119,10 @@ public abstract class Offsets
 
             // Offsets
             destData.dwBuildNumber = engine2.dwBuildNumber;
+            destData.dwNetworkGameClient = engine2.dwNetworkGameClient;
+            destData.dwNetworkGameClient_serverTickCount = engine2.dwNetworkGameClient_deltaTick;
+            destData.dwWindowHeight = engine2.dwWindowHeight;
+            destData.dwWindowWidth = engine2.dwWindowWidth;
             destData.dwLocalPlayerController = offsetsClient.dwLocalPlayerController;
             destData.dwEntityList = offsetsClient.dwEntityList;
             destData.dwViewMatrix = offsetsClient.dwViewMatrix;
@@ -107,6 +130,7 @@ public abstract class Offsets
             destData.dwLocalPlayerPawn = offsetsClient.dwLocalPlayerPawn;
             destData.dwViewAngles = offsetsClient.dwViewAngles;
             destData.dwGlobalVars = offsetsClient.dwGlobalVars;
+            destData.dwGameRules = offsetsClient.dwGameRules;
 
             // client.dll
             destData.m_fFlags = clientClasses.C_BaseEntity.fields.m_fFlags;
@@ -136,6 +160,7 @@ public abstract class Offsets
             destData.m_flDefuseCountDown = clientClasses.C_PlantedC4.fields.m_flDefuseCountDown;
             destData.m_flC4Blow = clientClasses.C_PlantedC4.fields.m_flC4Blow;
             destData.m_bBeingDefused = clientClasses.C_PlantedC4.fields.m_bBeingDefused;
+            destData.m_bGameRestart = clientClasses.C_CSGameRules.fields.m_bGameRestart;
 
             // Newly added fields client.dll
             destData.m_ArmorValue = clientClasses.C_CSPlayerPawn.fields.m_ArmorValue;
@@ -175,6 +200,19 @@ public abstract class Offsets
         m_iTeamNum = data.m_iTeamNum;
         m_bDormant = data.m_bDormant;
         m_iShotsFired = data.m_iShotsFired;
+        // Fill grouped/nested compatibility containers
+        engine2_dll.dwNetworkGameClient = data.dwNetworkGameClient;
+        engine2_dll.dwNetworkGameClient_serverTickCount = data.dwNetworkGameClient_serverTickCount;
+        engine2_dll.dwBuildNumber = data.dwBuildNumber;
+        engine2_dll.dwWindowHeight = data.dwWindowHeight ?? 0;
+        engine2_dll.dwWindowWidth = data.dwWindowWidth ?? 0;
+
+        client_dll.dwPlantedC4 = data.dwPlantedC4;
+        client_dll.dwLocalPlayerPawn = data.dwLocalPlayerPawn;
+        client_dll.dwViewAngles = data.dwViewAngles;
+        client_dll.dwViewMatrix = data.dwViewMatrix;
+        // Optional fields (may be absent in some offset sources)
+        client_dll.dwGameRules = data.dwGameRules;
         m_hPawn = data.m_hPawn;
         m_fFlags = data.m_fFlags;
         dwLocalPlayerController = data.dwLocalPlayerController;

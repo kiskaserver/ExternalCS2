@@ -58,7 +58,7 @@ public class AimTrainer
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[AimTrainer] Ошибка сохранения: {ex.Message}");
+                Console.WriteLine($"[AimTrainer ERROR] Save error: {ex.Message}\n{ex.StackTrace}");
             }
         }
     }
@@ -90,8 +90,8 @@ public class AimTrainer
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[AimTrainer] Ошибка загрузки: {ex.Message}");
-                // При ошибке — создаём новый файл при следующем Save()
+                Console.WriteLine($"[AimTrainer ERROR] Load error: {ex.Message}\n{ex.StackTrace}");
+                // On error — a new file will be created on next Save()
             }
         }
     }

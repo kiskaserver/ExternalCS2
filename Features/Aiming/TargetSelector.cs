@@ -58,7 +58,7 @@ namespace CS2GameHelper.Features.Aiming
                     var dynamicPredictionTime = 0.05f + Math.Min(distanceToTarget / 1000f, 1f) * 0.15f;
                     predictedPos = bonePos + _lastTargetVel * dynamicPredictionTime;
 
-                    // ИСПРАВЛЕНО: передаем gameData.Player, который имеет тип Player
+
                     AimingMath.GetAimAngles(gameData.Player, predictedPos, out var angleToBoneSize, out var anglesToBone);
                     if (angleToBoneSize > customFov) continue;
 

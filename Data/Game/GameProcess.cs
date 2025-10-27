@@ -11,6 +11,7 @@ public class GameProcess : ThreadedServiceBase
     private const string NameProcess = "cs2";
 
     private const string NameModule = "client.dll";
+    private const string NameEngineModule = "engine2.dll";
 
     private const string NameWindow = "Counter-Strike 2";
 
@@ -25,6 +26,7 @@ public class GameProcess : ThreadedServiceBase
     public System.Diagnostics.Process? Process { get; private set; }
 
     public Module? ModuleClient { get; private set; }
+    public Module? ModuleEngine { get; private set; }
 
     private IntPtr WindowHwnd { get; set; }
 
@@ -72,7 +74,9 @@ public class GameProcess : ThreadedServiceBase
     private void InvalidateModules()
     {
         ModuleClient?.Dispose();
+        ModuleEngine?.Dispose();
         ModuleClient = default;
+        ModuleEngine = default;
 
         Process?.Dispose();
         Process = default;
@@ -94,6 +98,7 @@ public class GameProcess : ThreadedServiceBase
         }
 
         ModuleClient ??= Process.GetModule(NameModule);
+        ModuleEngine ??= Process.GetModule(NameEngineModule);
 
         return ModuleClient != null;
     }

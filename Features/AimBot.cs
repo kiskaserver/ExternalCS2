@@ -71,6 +71,8 @@ namespace CS2GameHelper.Features
             _neuralTrainer = new NeuralAimTrainer();
             _targetSelector = new TargetSelector();
             _inputHandler = new UserInputHandler();
+            // Add a short console debug message so we know the neural aim subsystem is active
+            Console.WriteLine("[NeuralAimBot] Initialized AimBot and neural trainer.");
         }
 
         protected override string ThreadName => nameof(AimBot);
@@ -207,7 +209,7 @@ namespace CS2GameHelper.Features
                 if (!aimResult.Found) { _activeTargetId = -1; _lastTargetLockTime = DateTime.MinValue; }
                 _aimTotalCount++;
             }
-            catch (Exception ex) { Console.WriteLine($"[AimBot ERROR] {ex.Message}\n{ex.StackTrace}"); }
+            catch (Exception ex) { Console.WriteLine($"[NeuralAimBot ERROR] {ex.Message}\n{ex.StackTrace}"); }
         }
         
         private bool TryMouseDown()
