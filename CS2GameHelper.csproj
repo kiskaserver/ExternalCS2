@@ -52,6 +52,10 @@
             <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
             <ExcludeFromSingleFile>false</ExcludeFromSingleFile>
         </None>
+        <None Include="assets\fonts\emoji.ttf">
+            <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+            <ExcludeFromSingleFile>false</ExcludeFromSingleFile>
+        </None>
     </ItemGroup>
 
 </Project>

@@ -26,6 +26,7 @@ public abstract class Offsets
     public static int m_bDormant;
     public static int m_iShotsFired;
     public static int m_hPawn;
+    public static int m_hObserverTarget;
     public static int dwLocalPlayerController;
     public static int dwViewMatrix;
     public static int dwViewAngles;
@@ -146,6 +147,7 @@ public abstract class Offsets
             destData.m_bDormant = clientClasses.CGameSceneNode.fields.m_bDormant;
             destData.m_iShotsFired = clientClasses.C_CSPlayerPawn.fields.m_iShotsFired;
             destData.m_hPawn = clientClasses.CBasePlayerController.fields.m_hPawn;
+            destData.m_hObserverTarget = clientClasses.CPlayer_ObserverServices.fields.m_hObserverTarget;
             destData.m_entitySpottedState = clientClasses.C_CSPlayerPawn.fields.m_entitySpottedState;
             destData.m_Item = clientClasses.C_AttributeContainer.fields.m_Item;
             destData.m_pClippingWeapon = clientClasses.C_CSPlayerPawn.fields.m_pClippingWeapon;
@@ -214,6 +216,7 @@ public abstract class Offsets
         // Optional fields (may be absent in some offset sources)
         client_dll.dwGameRules = data.dwGameRules;
         m_hPawn = data.m_hPawn;
+    m_hObserverTarget = data.m_hObserverTarget;
         m_fFlags = data.m_fFlags;
         dwLocalPlayerController = data.dwLocalPlayerController;
         dwViewMatrix = data.dwViewMatrix;

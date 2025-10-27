@@ -61,6 +61,14 @@ public class ConfigManager
         }
     }
 
+    // Spectator list settings
+    public SpectatorListConfig SpectatorList { get; set; } = new();
+
+    public class SpectatorListConfig
+    {
+        public bool Enabled { get; set; } = true;
+    }
+
     public static ConfigManager Load()
     {
         try
@@ -87,6 +95,7 @@ public class ConfigManager
             options.Esp ??= new EspConfig();
             options.Esp.Box ??= new EspConfig.BoxConfig();
             options.Esp.Radar ??= new EspConfig.RadarConfig();
+            options.SpectatorList ??= new SpectatorListConfig();
 
             return options;
         }
@@ -120,6 +129,7 @@ public class ConfigManager
     {
         return new ConfigManager
         {
+            // Основные флаги
             AimBot = true,
             AimBotAutoShoot = true,
             BombTimer = true,
@@ -129,7 +139,45 @@ public class ConfigManager
             AimBotKey = Keys.LButton,
             TriggerBotKey = Keys.LMenu,
             TeamCheck = true,
-            Esp = new EspConfig()
+
+            // <<< ИСПРАВЛЕНО: Явно создаем вложенные объекты с их значениями по умолчанию
+            Esp = new EspConfig
+            {
+                Box = new EspConfig.BoxConfig
+                {
+                    Enabled = true,
+                    ShowName = true,
+                    ShowHealthBar = true,
+                    ShowHealthText = true,
+                    ShowDistance = true,
+                    ShowWeaponIcon = true,
+                    ShowArmor = true,
+                    ShowVisibilityIndicator = true,
+                    ShowFlags = true,
+                    EnemyColor = "FF8B0000",
+                    TeamColor = "FF00008B",
+                    VisibleAlpha = "FF",
+                    InvisibleAlpha = "88"
+                },
+                Radar = new EspConfig.RadarConfig
+                {
+                    Enabled = true,
+                    Size = 150,
+                    X = 50,
+                    Y = 50,
+                    MaxDistance = 100.0f,
+                    ShowLocalPlayer = true,
+                    ShowDirectionArrow = true,
+                    EnemyColor = "FFFF0000",
+                    TeamColor = "FF0000FF",
+                    VisibleAlpha = "FF",
+                    InvisibleAlpha = "88"
+                }
+            },
+            SpectatorList = new SpectatorListConfig
+            {
+                Enabled = true
+            }
         };
     }
 }

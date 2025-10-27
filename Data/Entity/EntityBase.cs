@@ -39,6 +39,8 @@ public abstract class EntityBase
     public bool IsReloading { get; private set; }
     public bool IsDefusing { get; private set; }
 
+    public IntPtr ObserverTarget { get; private set; }
+
     private IntPtr CurrentWeapon { get; set; }
     public string CurrentWeaponName { get; private set; } = null!;
 
@@ -112,6 +114,14 @@ public abstract class EntityBase
 
         Velocity = gameProcess.Process.Read<Vector3>(AddressBase + Offsets.m_vecAbsVelocity);
 
+        if (gameProcess.Process != null)
+        {
+            ObserverTarget = gameProcess.Process.Read<IntPtr>(AddressBase + Offsets.m_hObserverTarget);
+        }
+
+
         return true;
     }
+
+
 }

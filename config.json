@@ -37,5 +37,8 @@
       "visibleAlpha": "FF",
       "invisibleAlpha": "88"
     }
+  },
+  "spectatorList": {
+    "enabled": true
   }
 }

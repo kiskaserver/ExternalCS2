@@ -25,6 +25,7 @@ public class ModernGraphics : ThreadedServiceBase
     private SKPaint? _paint;
     private SKTypeface? _defaultFont;
     private SKTypeface? _undefeatedFont;
+    private SKTypeface? _emojiFont;
 
     private GRGlInterface? _grInterface;
     private GRContext? _grContext;
@@ -123,6 +124,23 @@ public class ModernGraphics : ThreadedServiceBase
         {
             _undefeatedFont = _defaultFont;
         }
+        // Load emoji font from assets/fonts/emoji.ttf (preferred). Fall back to default font.
+        try
+        {
+            var emojiPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "assets", "fonts", "emoji.ttf");
+            if (File.Exists(emojiPath))
+            {
+                _emojiFont = SKTypeface.FromFile(emojiPath);
+            }
+            else
+            {
+                _emojiFont = _defaultFont;
+            }
+        }
+        catch
+        {
+            _emojiFont = _defaultFont;
+        }
         
         _paint = new SKPaint
         {
@@ -137,6 +155,10 @@ public class ModernGraphics : ThreadedServiceBase
     /// True when the custom 'undefeated' font was successfully loaded.
     /// </summary>
     public bool IsUndefeatedFontLoaded => _undefeatedFont != null && _undefeatedFont != _defaultFont;
+    /// <summary>
+    /// True when an emoji-capable font was successfully loaded.
+    /// </summary>
+    public bool IsEmojiFontLoaded => _emojiFont != null && _emojiFont != _defaultFont;
 
     private void OnWindowLoad()
     {
@@ -359,6 +381,11 @@ public class ModernGraphics : ThreadedServiceBase
                 {
                     BombTimer.Draw(this);
                 }
+
+                if (config.SpectatorList)
+                {
+                    SpectatorList.Draw(this);
+                }
             }
             else if (hasWindow)
             {
@@ -477,6 +504,90 @@ public class ModernGraphics : ThreadedServiceBase
     {
         AddText(text, x, y, ConvertColor(color), fontSize, useCustomFont);
     }
+
+    /// <summary>
+    /// Measure text using Skia paint and return width/height as a Vector2 (X=width, Y=height).
+    /// This is a lightweight helper used by features to layout text before drawing.
+    /// </summary>
+    public Vector2 MeasureText(string text, float fontSize = 12, bool useCustomFont = false)
+    {
+        if (string.IsNullOrEmpty(text)) return Vector2.Zero;
+
+        // If the text contains emoji, prefer the emoji font when available.
+        var typeface = _defaultFont;
+        if (ContainsEmoji(text) && _emojiFont != null)
+        {
+            typeface = _emojiFont;
+        }
+        else
+        {
+            typeface = useCustomFont && _undefeatedFont != null ? _undefeatedFont : _defaultFont;
+        }
+
+        using var paint = new SKPaint
+        {
+            IsAntialias = true,
+            TextSize = fontSize,
+            Typeface = typeface,
+            TextEncoding = SKTextEncoding.Utf16,
+            TextAlign = SKTextAlign.Left,
+            Style = SKPaintStyle.Fill
+        };
+
+        float width;
+        try
+        {
+            width = paint.MeasureText(text);
+        }
+        catch
+        {
+            width = fontSize * text.Length * 0.5f;
+        }
+
+        float ascent;
+        float descent;
+        try
+        {
+            var metrics = paint.FontMetrics;
+            ascent = Math.Abs(metrics.Ascent);
+            descent = Math.Abs(metrics.Descent);
+        }
+        catch
+        {
+            ascent = fontSize;
+            descent = fontSize * 0.2f;
+        }
+
+        var height = ascent + descent;
+        return new Vector2(width, height);
+    }
+
+    // Heuristic to detect emoji/codepoints outside BMP that likely require an emoji-capable font.
+    private static bool ContainsEmoji(string text)
+    {
+        if (string.IsNullOrEmpty(text)) return false;
+
+        for (int i = 0; i < text.Length; i++)
+        {
+            int cp = char.ConvertToUtf32(text, i);
+            // Skip the low surrogate when we consumed a surrogate pair
+            if (char.IsHighSurrogate(text[i])) i++;
+
+            // Broad ranges that contain emoji and symbols
+            if ((cp >= 0x1F300 && cp <= 0x1FAFF) || // Misc Symbols and Pictographs / Emoji
+                (cp >= 0x1F600 && cp <= 0x1F64F) || // Emoticons
+                (cp >= 0x2600 && cp <= 0x26FF) ||   // Misc symbols
+                (cp >= 0x2700 && cp <= 0x27BF))     // Dingbats
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    
+
 
     public void DrawLineWorld(uint color, Vector3 start, Vector3 end)
     {
@@ -605,7 +716,16 @@ public class ModernGraphics : ThreadedServiceBase
                 // Always use UTF-16 encoding for .NET strings
                 paint.TextEncoding = SKTextEncoding.Utf16;
                 paint.TextAlign = SKTextAlign.Center;
-                var typeface = command.UseCustomFont && _undefeatedFont != null ? _undefeatedFont : _defaultFont;
+                // Choose an appropriate typeface. If the text contains emoji, prefer the emoji font.
+                var typeface = _defaultFont;
+                if (ContainsEmoji(command.Text) && _emojiFont != null)
+                {
+                    typeface = _emojiFont;
+                }
+                else
+                {
+                    typeface = command.UseCustomFont && _undefeatedFont != null ? _undefeatedFont : _defaultFont;
+                }
                 paint.Typeface = typeface;
 
                 // If the chosen typeface cannot render the glyph, fall back to default font

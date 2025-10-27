@@ -15,6 +15,10 @@ internal static class EspColor
     public const uint White = 0xFFFFFFFF;
     public const uint Green = 0xFF00FF00;
     public const uint Black = 0xFF000000;
+    public const uint Red = 0xFFFF0000;
+    public const uint Yellow = 0xFFFFFF00;
+    public const uint Orange = 0xFFFFA500; // Цвет для C4
+    public const uint Gray = 0xFF808080;
 }
 
 /// <summary>
@@ -23,9 +27,7 @@ internal static class EspColor
 public static class EspBox
 {
     private const int OutlineThickness = 1;
-    
-    // Константа для перевода игровых единиц в метры в CS2
-    private const float UnitsToMeters = 0.0254f; // 1 юнит = 2.54 см в CS2
+    private const float UnitsToMeters = 0.0254f;
 
     private static readonly Dictionary<string, string> GunIcons = new(StringComparer.OrdinalIgnoreCase)
     {
@@ -67,9 +69,28 @@ public static class EspBox
         ["molotov"] = "l", ["decoy"] = "m", ["incgrenade"] = "n"
     };
 
+    // <<< НОВОЕ: Иконки для статусов в формате Unicode
+    private static readonly Dictionary<string, string> StatusIcons = new()
+    {
+        ["Flashed"] = "💡",
+        ["Scoped"] = "🔎",
+        ["Defusing"] = "💣",
+        ["Air"] = "🪂",
+        ["Running"] = "🏃",
+        ["Walking"] = "🚶"
+    };
+
+    // <<< НОВЫЙ ВСПОМОГАТЕЛЬНЫЙ МЕТОД ДЛЯ ЦЕНТРИРОВАНИЯ ТЕКСТА
+    private static void DrawCenteredText(ModernGraphics graphics, string text, float centerX, float y, uint color, float fontSize = 12, bool useCustomFont = false)
+    {
+        var textSize = graphics.MeasureText(text, fontSize, useCustomFont);
+        float textWidth = textSize.X;
+        float textX = centerX - textWidth / 2f;
+        graphics.DrawText(text, textX, y, color, fontSize, useCustomFont);
+    }
+
     public static void Draw(ModernGraphics graphics)
     {
-        // ESP draw entry
         var fullConfig = ConfigManager.Load();
         var espConfig = fullConfig.Esp.Box;
         if (!espConfig.Enabled) return;
@@ -119,47 +140,51 @@ public static class EspBox
         graphics.DrawRectOutline(topLeft.X, topLeft.Y, width, height, boxColor);
 
         float textY = topLeft.Y - 16;
+        float centerX = (topLeft.X + bottomRight.X) / 2f;
 
         // === Имя ===
         if (config.ShowName)
         {
-            string name = entity.Name ?? "UNKNOWN";
-            int nameX = (int)((topLeft.X + bottomRight.X) / 2f);
-            graphics.DrawText(name, nameX, (int)textY, EspColor.White);
+            string rawName = entity.Name ?? "UNKNOWN";
+            string name = rawName.Length > 0 ? rawName.Substring(0, rawName.Length - 1) : "UNKNOWN";
+            DrawCenteredText(graphics, name, centerX, textY, EspColor.White);
             textY += 14;
         }
 
-        // === Дистанция (исправлено для CS2) ===
+        // <<< ИЗМЕНЕНО: Проверяем, несет ли игрок бомбу по имени оружия
+        bool hasBomb = !string.IsNullOrEmpty(entity.CurrentWeaponName) && entity.CurrentWeaponName.Contains("c4", StringComparison.OrdinalIgnoreCase);
+        if (hasBomb)
+        {
+            string bombText = "💣 C4";
+            DrawCenteredText(graphics, bombText, centerX, textY, EspColor.Orange);
+            textY += 14;
+        }
+
+        // === Дистанция ===
         if (config.ShowDistance)
         {
             float distance = Vector3.Distance(localPlayer.Position, entity.Position) * UnitsToMeters;
             string distText = $"{distance:0}m";
-            int distX = (int)((topLeft.X + bottomRight.X) / 2f);
-            graphics.DrawText(distText, distX, (int)textY, EspColor.White);
+            DrawCenteredText(graphics, distText, centerX, textY, EspColor.White);
             textY += 14;
         }
 
-        // === Полоска здоровья (исправлено) ===
+        // === Полоска здоровья ===
         if (config.ShowHealthBar)
         {
             float healthBarLeft = topLeft.X - 8f;
             float healthBarHeight = height;
             float healthBarWidth = 4f;
             
-            // Расчет заполненной части полоски здоровья
             float healthPercentage = Math.Clamp(entity.Health / 100f, 0f, 1f);
             float filledHeight = healthBarHeight * healthPercentage;
-            
-            // Верхняя позиция заполненной части
             float filledTopY = topLeft.Y + (healthBarHeight - filledHeight);
             
-            // Рисуем фон полоски здоровья
+            uint healthBarColor = entity.Health > 60 ? EspColor.Green : 
+                                   entity.Health > 30 ? EspColor.Yellow : EspColor.Red;
+
             graphics.DrawRect(healthBarLeft, topLeft.Y, healthBarWidth, healthBarHeight, 0x80000000);
-            
-            // Рисуем заполненную часть
-            graphics.DrawRect(healthBarLeft, filledTopY, healthBarWidth, filledHeight, EspColor.Green);
-            
-            // Рисуем обводку
+            graphics.DrawRect(healthBarLeft, filledTopY, healthBarWidth, filledHeight, healthBarColor);
             graphics.DrawRectOutline(healthBarLeft - 1, topLeft.Y - 1, healthBarWidth + 2, healthBarHeight + 2, EspColor.Black);
         }
 
@@ -175,7 +200,7 @@ public static class EspBox
         // === Броня / Шлем ===
         if (config.ShowArmor && entity.Armor > 0)
         {
-            string armorText = entity.HasHelmet ? $"H{entity.Armor}" : entity.Armor.ToString();
+            string armorText = entity.HasHelmet ? $"🛡{entity.Armor}" : $"🥚{entity.Armor}";
             int armorX = (int)(topLeft.X - 12);
             int armorY = (int)(bottomRight.Y - 12);
             graphics.DrawText(armorText, armorX, armorY, EspColor.White);
@@ -187,54 +212,53 @@ public static class EspBox
             string icon = GetWeaponIcon(entity.CurrentWeaponName);
             if (!string.IsNullOrEmpty(icon))
             {
-                int weaponX = (int)((topLeft.X + bottomRight.X) / 2f);
                 int weaponY = (int)(bottomRight.Y + 2);
                 bool useCustom = graphics is ModernGraphics mg && mg.IsUndefeatedFontLoaded;
-                graphics.DrawText(icon, weaponX, weaponY, EspColor.White, fontSize: 14, useCustomFont: useCustom);
+                DrawCenteredText(graphics, icon, centerX, weaponY, EspColor.White, 14, useCustom);
             }
         }
 
-        // === Статусы ===
+        // === Статусы (с иконками) ===
         if (config.ShowFlags)
         {
             int flagX = (int)(bottomRight.X + 5);
             int flagY = (int)topLeft.Y;
-            int spacing = 14;
+            int spacing = 16;
             int line = 0;
 
             if (entity.FlashAlpha > 7)
             {
-                graphics.DrawText("Flashed", flagX, flagY + line * spacing, EspColor.White);
+                graphics.DrawText($"{StatusIcons["Flashed"]} Flashed", flagX, flagY + line * spacing, EspColor.Yellow);
                 line++;
             }
 
             if (entity.IsInScope == 1)
             {
-                graphics.DrawText("Scoped", flagX, flagY + line * spacing, EspColor.White);
+                graphics.DrawText($"{StatusIcons["Scoped"]} Scoped", flagX, flagY + line * spacing, EspColor.White);
                 line++;
             }
 
             if (entity.IsDefusing)
             {
-                graphics.DrawText("Defusing", flagX, flagY + line * spacing, EspColor.White);
+                graphics.DrawText($"{StatusIcons["Defusing"]} Defusing", flagX, flagY + line * spacing, EspColor.Red);
                 line++;
             }
 
             if (!entity.Flags.HasFlag(EntityFlags.OnGround))
             {
-                graphics.DrawText("Air", flagX, flagY + line * spacing, EspColor.White);
+                graphics.DrawText($"{StatusIcons["Air"]} Air", flagX, flagY + line * spacing, EspColor.Gray);
                 line++;
             }
 
             float speed = entity.Velocity.Length();
             if (speed > 200f)
             {
-                graphics.DrawText("Running", flagX, flagY + line * spacing, EspColor.White);
+                graphics.DrawText($"{StatusIcons["Running"]} Running", flagX, flagY + line * spacing, EspColor.White);
                 line++;
             }
             else if (speed > 10f)
             {
-                graphics.DrawText("Walking", flagX, flagY + line * spacing, EspColor.White);
+                graphics.DrawText($"{StatusIcons["Walking"]} Walking", flagX, flagY + line * spacing, EspColor.Gray);
                 line++;
             }
         }
@@ -243,7 +267,6 @@ public static class EspBox
     private static string GetWeaponIcon(string? weaponName)
     {
         if (string.IsNullOrEmpty(weaponName)) return string.Empty;
-        // Убираем "weapon_" префикс, если есть
         string cleanName = weaponName.Replace("weapon_", "", StringComparison.OrdinalIgnoreCase);
         return GunIcons.GetValueOrDefault(cleanName, "?");
     }
@@ -267,7 +290,6 @@ public static class EspBox
         foreach (var bone in entity.BonePos.Values)
         {
             var projected = matrix.Transform(bone);
-            // В CS2: если Z >= 1 — объект за пределами frustrum или невидим
             if (projected.Z >= 1 || projected.X < 0 || projected.Y < 0)
                 continue;
 
@@ -281,7 +303,6 @@ public static class EspBox
         if (!anyValid)
             return null;
 
-        // Динамический отступ (как в рабочей версии)
         var sizeMultiplier = 2f - (entity.Health / 100f);
         var padding = new Vector2(BasePadding * sizeMultiplier);
 
