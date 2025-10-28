@@ -2,20 +2,26 @@
 
 > Important: This project is for research and educational purposes only. Using these tools to gain an unfair advantage in online multiplayer games violates Valve's Terms of Service and will likely result in a permanent account ban.
 
-[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-[![.NET](https://img.shields.io/badge/.NET-8.0-blue?logo=dotnet)](https://dotnet.microsoft.com/)
-[![C#](https://img.shields.io/badge/C%23-10.0-blue?logo=c%23)](https://docs.microsoft.com/dotnet/csharp/)
-[![TorchSharp GPU](https://img.shields.io/nuget/v/TorchSharp-cuda-windows?label=TorchSharp-cuda-windows&logo=nuget)](https://www.nuget.org/packages/TorchSharp-cuda-windows/0.105.1)
-[![TorchSharp CPU](https://img.shields.io/nuget/v/TorchSharp-cpu?label=TorchSharp-cpu&logo=nuget)](https://www.nuget.org/packages/TorchSharp-cpu/0.105.1)
-[![SkiaSharp](https://img.shields.io/nuget/v/SkiaSharp?label=SkiaSharp&logo=nuget)](https://www.nuget.org/packages/SkiaSharp/)
-[![Silk.NET](https://img.shields.io/nuget/v/Silk.NET.OpenGL?label=Silk.NET&logo=nuget)](https://www.nuget.org/packages/Silk.NET.OpenGL/)
-[![System.Text.Json](https://img.shields.io/nuget/v/System.Text.Json?label=System.Text.Json&logo=nuget)](https://www.nuget.org/packages/System.Text.Json/)
-[![System.Drawing.Common](https://img.shields.io/nuget/v/System.Drawing.Common?label=System.Drawing.Common&logo=nuget)](https://www.nuget.org/packages/System.Drawing.Common/)
-[![xUnit](https://img.shields.io/nuget/v/xunit?label=xUnit&logo=xunit)](https://www.nuget.org/packages/xunit/)
-[![Game: CS2](https://img.shields.io/badge/Game-CS2-red?logo=steam)](https://store.steampowered.com/app/730/CounterStrike_2/)
-[![Type: External](https://img.shields.io/badge/Type-External-blue)](https://unknowncheats.me/forum/forum-general/123519-external-vs-internal-hack.html)
-[![Latest commit](https://img.shields.io/github/last-commit/kiskaserver/ExternalCS2/main.svg)](https://github.com/kiskaserver/ExternalCS2/commits)
-[![Stable release](https://img.shields.io/github/v/release/kiskaserver/ExternalCS2?label=stable%20release)](https://github.com/kiskaserver/ExternalCS2/releases)
+<p align="center">
+  <img src="https://img.shields.io/badge/.NET-8.0-512BD4?style=for-the-badge&logo=dotnet&logoColor=white">
+  <img src="https://img.shields.io/badge/C%23-10.0-239120?style=for-the-badge&logo=c-sharp&logoColor=white">
+  <img src="https://img.shields.io/badge/TorchSharp%20GPU-0.105.1-0769AD?style=for-the-badge&logo=nuget&logoColor=white">
+  <img src="https://img.shields.io/badge/TorchSharp%20CPU-0.105.1-0769AD?style=for-the-badge&logo=nuget&logoColor=white">
+  <img src="https://img.shields.io/badge/SkiaSharp-latest-0C9D58?style=for-the-badge&logo=nuget&logoColor=white">
+  <img src="https://img.shields.io/badge/Silk.NET-OpenGL-0078D6?style=for-the-badge&logo=nuget&logoColor=white">
+  <img src="https://img.shields.io/badge/System.Text.Json-latest-5C2D91?style=for-the-badge&logo=nuget&logoColor=white">
+  <img src="https://img.shields.io/badge/System.Drawing.Common-latest-5C2D91?style=for-the-badge&logo=nuget&logoColor=white">
+  <img src="https://img.shields.io/badge/xUnit-latest-FF6F00?style=for-the-badge&logo=xunit&logoColor=white">
+  <img src="https://img.shields.io/badge/Game-CS2-black?style=for-the-badge&logo=counter-strike&logoColor=white">
+  <img src="https://img.shields.io/badge/Type-External-0078D6?style=for-the-badge">
+  <img src="https://img.shields.io/github/last-commit/kiskaserver/ExternalCS2/main?style=for-the-badge&label=last%20commit">
+  <img src="https://img.shields.io/github/v/release/kiskaserver/ExternalCS2?style=for-the-badge&label=stable%20release">
+  <img src="https://img.shields.io/badge/license-MIT-blue?style=for-the-badge">
+  <img src="https://img.shields.io/badge/offsets%20auto%20update-D06B57?style=for-the-badge">
+  <img src="https://img.shields.io/badge/undetected-03C75A?style=for-the-badge">
+  <img src="https://img.shields.io/badge/fullscreen-supported-76B900?style=for-the-badge">
+  <img src="https://img.shields.io/badge/code%20quality-A%2B-76B900?style=for-the-badge">
+</p>
 
 <details>
 <summary>Tech stack & libraries</summary>
