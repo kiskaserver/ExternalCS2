@@ -12,6 +12,10 @@
 [![System.Text.Json](https://img.shields.io/nuget/v/System.Text.Json?label=System.Text.Json&logo=nuget)](https://www.nuget.org/packages/System.Text.Json/)
 [![System.Drawing.Common](https://img.shields.io/nuget/v/System.Drawing.Common?label=System.Drawing.Common&logo=nuget)](https://www.nuget.org/packages/System.Drawing.Common/)
 [![xUnit](https://img.shields.io/nuget/v/xunit?label=xUnit&logo=xunit)](https://www.nuget.org/packages/xunit/)
+[![Game: CS2](https://img.shields.io/badge/Game-CS2-red?logo=steam)](https://store.steampowered.com/app/730/CounterStrike_2/)
+[![Type: External](https://img.shields.io/badge/Type-External-blue)]
+[![Latest commit](https://img.shields.io/badge/last%20commit-unknown-lightgrey)](https://github.com/kiskaserver/ExternalCS2/commits)
+
 
 <details>
 <summary>Tech stack & libraries</summary>
