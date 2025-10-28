@@ -18,7 +18,10 @@ public class ClientDll
     public int dwCSGOInput { get; set; }
     public int dwEntityList { get; set; }
     public int dwGameEntitySystem { get; set; }
-    public int dwGameEntitySystem_getHighestEntityIndex { get; set; }
+
+    [JsonPropertyName("dwGameEntitySystem_highestEntityIndex")]
+    public int dwGameEntitySystem_highestEntityIndex { get; set; }
+
     public int dwGameRules { get; set; }
     public int dwGlobalVars { get; set; }
     public int dwGlowManager { get; set; }
@@ -31,7 +34,9 @@ public class ClientDll
     public int dwViewAngles { get; set; }
     public int dwViewMatrix { get; set; }
     public int dwViewRender { get; set; }
+    public int dwWeaponC4 { get; set; }
 }
+
 
 public class Engine2Dll
 {

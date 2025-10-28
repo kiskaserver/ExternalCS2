@@ -56,6 +56,10 @@
             <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
             <ExcludeFromSingleFile>false</ExcludeFromSingleFile>
         </None>
+        <None Include="assets\sounds\hit.wav">
+            <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+            <ExcludeFromSingleFile>false</ExcludeFromSingleFile>
+        </None>
     </ItemGroup>
 
 </Project>

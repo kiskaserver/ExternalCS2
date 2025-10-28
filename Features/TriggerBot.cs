@@ -1,6 +1,6 @@
 using CS2GameHelper.Data.Game;
 using CS2GameHelper.Utils;
-using System.Windows.Forms;
+using Keys = CS2GameHelper.Utils.Keys;
 
 namespace CS2GameHelper.Features;
 

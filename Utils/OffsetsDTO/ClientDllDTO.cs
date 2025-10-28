@@ -1852,6 +1852,7 @@ public class Fields
     public int m_flEmitSoundTime { get; set; }
     public int m_flFlashBangTime { get; set; }
     public int m_flFlashDuration { get; set; }
+    public int m_flTotalRoundDamageDealt { get; set; }
     public int m_flFlashMaxAlpha { get; set; }
     public int m_flFlashOverlayAlpha { get; set; }
     public int m_flFlashScreenshotAlpha { get; set; }

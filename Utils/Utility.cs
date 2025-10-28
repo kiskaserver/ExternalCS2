@@ -237,24 +237,18 @@ public static class Utility
     }
 
     /// <summary>
-    ///     https://ben.land/post/2021/04/25/windmouse-human-mouse-movement/
+    /// Генерирует человеческое относительное движение мыши из (0,0) в (destX, destY).
+    /// https://ben.land/post/2021/04/25/windmouse-human-mouse-movement/
     /// </summary>
-    /// <param name="G_0">magnitude of the gravitational fornce</param>
-    /// <param name="W_0">magnitude of the wind force fluctuations</param>
-    /// <param name="M_0"> maximum step size (velocity clip threshold)</param>
-    /// <param name="D_0">distance where wind behavior changes from random to damped</param>
-    public static void WindMouseMove(int start_x, int start_y, int dest_x, int dest_y, double G_0, double W_0,
-        double M_0,
-        double D_0)
+    public static void WindMouseMove(int destX, int destY, double G_0 = 9, double W_0 = 3, double M_0 = 15, double D_0 = 12)
     {
+        double x = 0, y = 0;
         double v_x = 0, v_y = 0, W_x = 0, W_y = 0;
-
         var rand = new Random();
 
         while (true)
         {
-            var dist = Math.Sqrt(Math.Pow(dest_x - start_x, 2) + Math.Pow(dest_y - start_y, 2));
-
+            var dist = Math.Sqrt(Math.Pow(destX - x, 2) + Math.Pow(destY - y, 2));
             if (dist < 1) break;
 
             var W_mag = Math.Min(W_0, dist);
@@ -274,8 +268,8 @@ public static class Utility
                     M_0 /= Sqrt5;
             }
 
-            v_x += W_x + G_0 * (dest_x - start_x) / dist;
-            v_y += W_y + G_0 * (dest_y - start_y) / dist;
+            v_x += W_x + G_0 * (destX - x) / dist;
+            v_y += W_y + G_0 * (destY - y) / dist;
 
             var v_mag = Math.Sqrt(v_x * v_x + v_y * v_y);
             if (v_mag > M_0)
@@ -285,10 +279,28 @@ public static class Utility
                 v_y = v_y / v_mag * v_clip;
             }
 
-            start_x += (int)v_x;
-            start_y += (int)v_y;
+            double new_x = x + v_x;
+            double new_y = y + v_y;
 
-            MouseMove(start_x, start_y);
+            // Отправляем ОТНОСИТЕЛЬНОЕ смещение
+            int dx = (int)Math.Round(new_x - x);
+            int dy = (int)Math.Round(new_y - y);
+
+            if (dx != 0 || dy != 0)
+            {
+                MouseMove(dx, dy); // <-- относительное движение
+            }
+
+            x = new_x;
+            y = new_y;
+        }
+
+        // Финальная коррекция на случай остатка
+        int finalDx = destX - (int)Math.Round(x);
+        int finalDy = destY - (int)Math.Round(y);
+        if (finalDx != 0 || finalDy != 0)
+        {
+            MouseMove(finalDx, finalDy);
         }
     }
 
@@ -343,7 +355,7 @@ public static class Utility
             {
                 keyboard = new KeyboardInput
                 {
-                    virtualKey = (ushort)Keys.F24,
+                    virtualKey = (ushort)Keys.Space, // ← ИСПРАВЛЕНО
                     scanCode = 0,
                     flags = 0,
                     timeStamp = 0,
@@ -359,7 +371,7 @@ public static class Utility
             {
                 keyboard = new KeyboardInput
                 {
-                    virtualKey = (ushort)Keys.F24,
+                    virtualKey = (ushort)Keys.Space, // ← ИСПРАВЛЕНО
                     scanCode = 0,
                     flags = KeyboardFlags.KeyUp,
                     timeStamp = 0,
@@ -368,7 +380,7 @@ public static class Utility
             }
         };
 
-        User32.SendInput((uint)inputs.Length, inputs, Marshal.SizeOf(typeof(Input)));
+        User32.SendInput((uint)inputs.Length, inputs, Marshal.SizeOf<Input>());
     }
 
 

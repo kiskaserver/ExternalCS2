@@ -1,4 +1,5 @@
 ﻿using System.Media;
+using System.IO;
 using System.Numerics;
 using CS2GameHelper.Core.Data;
 using CS2GameHelper.Data.Game;
@@ -82,25 +83,8 @@ public class Player : EntityBase
             GraphicsMath.DegreeToRadian(ViewAngles.Y + AimPunchAngle.Y * Offsets.WeaponRecoilScale)
         );
 
-        try
-        {
-            var totalHits = gameProcess.Process.Read<int>
-            (
-                gameProcess.Process.Read<IntPtr>(AddressBase + 0x1518) + 0x40
-            );
-
-            if (totalHits != PreviousTotalHits && totalHits > 0)
-            {
-                using var player = new SoundPlayer("hit.wav");
-                player.Play();
-            }
-
-            PreviousTotalHits = totalHits;
-        }
-        catch (Exception)
-        {
-            // ignored
-        }
+        // hit-sound / kill-detection logic should be implemented in a context that has access to GameData/graphics.
+        // Placeholder: no per-entity graphics-based logic here to keep Update() self-contained.
 
         // <<< ИЗМЕНЕНО: Создаем атомарный снепшот внутри блока lock
         // Это гарантирует, что все данные в снепшоте относятся к одному и тому же моменту времени

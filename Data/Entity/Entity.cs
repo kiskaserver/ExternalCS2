@@ -26,6 +26,9 @@ public class Entity : EntityBase
     public IReadOnlyDictionary<string, Vector3> BonePos => _bonePositions;
     public int Id { get; }
 
+    public IntPtr LastAttacker { get; set; } 
+    public float LastDamageTime { get; set; }
+
     public override bool IsAlive()
     {
         return base.IsAlive() && !_dormant;
@@ -69,7 +72,18 @@ public class Entity : EntityBase
             ? gameProcess.Process.ReadString(ControllerBase + Offsets.m_iszPlayerName)
             : string.Empty;
 
-        return !IsAlive() || UpdateBonePositions(gameProcess);
+        if (!IsAlive())
+        {
+            // Читаем, кто нанес последний урон, только для мертвых сущностей
+            if (gameProcess?.Process != null)
+            {
+                LastAttacker = gameProcess.Process.Read<IntPtr>(AddressBase + Offsets.m_hLastAttacker);
+                LastDamageTime = gameProcess.Process.Read<float>(AddressBase + Offsets.m_flDeathInfoTime);
+            }
+        }
+
+    // UpdateBonePositions already checks for null internally; suppress nullable analysis here.
+    return !IsAlive() || UpdateBonePositions(gameProcess!);
     }
 
     private bool UpdateBonePositions(GameProcess gameProcess)

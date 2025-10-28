@@ -22,6 +22,10 @@ public abstract class Offsets
     public static int m_lifeState;
     public static int m_iHealth;
     public static int m_iTeamNum;
+    public static int m_iNumRoundKills;
+    public static int m_flTotalRoundDamageDealt;
+    public static int m_hLastAttacker;
+    public static int m_flDeathInfoTime;
     public static int dwEntityList;
     public static int m_bDormant;
     public static int m_iShotsFired;
@@ -33,6 +37,7 @@ public abstract class Offsets
     public static int m_entitySpottedState;
     public static int m_Item;
     public static int m_pClippingWeapon;
+    public static int m_pActionTrackingServices;
     public static int m_AttributeManager;
     public static int m_iItemDefinitionIndex;
     public static int m_bIsScoped;
@@ -71,6 +76,7 @@ public abstract class Offsets
         public static int dwViewAngles;
         public static int dwViewMatrix;
         public static int dwGameRules;
+        public static int dwLocalPlayerController;
     }
     public static int m_vecOrigin;
 
@@ -101,7 +107,7 @@ public abstract class Offsets
         {
             var offsetsJson = await FetchJson("https://raw.githubusercontent.com/sezzyaep/CS2-OFFSETS/refs/heads/main/offsets.json");
             var clientJson = await FetchJson("https://raw.githubusercontent.com/sezzyaep/CS2-OFFSETS/refs/heads/main/client_dll.json");
-
+            
             var sourceDataDw = JsonSerializer.Deserialize<OffsetsDTO>(offsetsJson)
                                ?? throw new InvalidOperationException("Failed to deserialize offsets.json.");
             var sourceDataClient = JsonSerializer.Deserialize<ClientDllDTO>(clientJson)
@@ -171,6 +177,16 @@ public abstract class Offsets
             destData.m_angEyeAngles = clientClasses.C_CSPlayerPawn.fields.m_angEyeAngles;   // Vector2 (pitch/yaw)
             destData.m_CBodyComponent = clientClasses.C_BaseEntity.fields.m_CBodyComponent;
             destData.m_vecOrigin = clientClasses.CGameSceneNode.fields.m_vecOrigin;
+            // Action tracking (round stats)
+            destData.m_iNumRoundKills = clientClasses.CCSPlayerController_ActionTrackingServices.fields.m_iNumRoundKills;
+            // Total round damage dealt (per-player stat)
+            destData.m_flTotalRoundDamageDealt = clientClasses.CCSPlayerController_ActionTrackingServices.fields.m_flTotalRoundDamageDealt;
+            // Pointer to action tracking services inside player controller
+            destData.m_pActionTrackingServices = clientClasses.CCSPlayerController.fields.m_pActionTrackingServices;
+            // Last attacker handle on breakable props
+            destData.m_hLastAttacker = clientClasses.C_BreakableProp.fields.m_hLastAttacker;
+            // Death info time on player pawn
+            destData.m_flDeathInfoTime = clientClasses.C_CSPlayerPawn.fields.m_flDeathInfoTime;
 
             UpdateStaticFields(destData);
         }
@@ -216,8 +232,12 @@ public abstract class Offsets
         // Optional fields (may be absent in some offset sources)
         client_dll.dwGameRules = data.dwGameRules;
         m_hPawn = data.m_hPawn;
-    m_hObserverTarget = data.m_hObserverTarget;
+        m_hObserverTarget = data.m_hObserverTarget;
+    m_hLastAttacker = data.m_hLastAttacker;
         m_fFlags = data.m_fFlags;
+        m_iNumRoundKills = data.m_iNumRoundKills;
+        m_flTotalRoundDamageDealt = data.m_flTotalRoundDamageDealt;
+    m_flDeathInfoTime = data.m_flDeathInfoTime;
         dwLocalPlayerController = data.dwLocalPlayerController;
         dwViewMatrix = data.dwViewMatrix;
         dwViewAngles = data.dwViewAngles;
@@ -232,12 +252,24 @@ public abstract class Offsets
         m_iszPlayerName = data.m_iszPlayerName;
         dwPlantedC4 = data.dwPlantedC4;
         dwGlobalVars = data.dwGlobalVars;
+    m_pActionTrackingServices = data.m_pActionTrackingServices;
         m_nBombSite = data.m_nBombSite;
         m_bBombDefused = data.m_bBombDefused;
         m_vecAbsVelocity = data.m_vecAbsVelocity;
         m_flDefuseCountDown = data.m_flDefuseCountDown;
         m_flC4Blow = data.m_flC4Blow;
         m_bBeingDefused = data.m_bBeingDefused;
+        // Debug output: print a summary of important offsets so we can verify they loaded correctly
+        try
+        {
+            Console.ForegroundColor = ConsoleColor.Green;
+            Console.WriteLine($"[Offsets] Loaded: dwLocalPlayerPawn=0x{dwLocalPlayerPawn:X8}, dwLocalPlayerController=0x{dwLocalPlayerController:X8}, dwEntityList=0x{dwEntityList:X8}, dwViewMatrix=0x{dwViewMatrix:X8}, dwViewAngles=0x{dwViewAngles:X8}, dwGlobalVars=0x{dwGlobalVars:X8}");
+            Console.WriteLine($"[Offsets] Player stats: m_pActionTrackingServices=0x{m_pActionTrackingServices:X8}, m_flTotalRoundDamageDealt=0x{m_flTotalRoundDamageDealt:X8}, m_iNumRoundKills=0x{m_iNumRoundKills:X8}");
+        }
+        catch
+        {
+            // Swallow any exceptions from logging to avoid breaking offset update flow
+        }
     }
 
     #endregion

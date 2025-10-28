@@ -1,6 +1,5 @@
 using System.IO;
 using System.Text.Json;
-using System.Windows.Forms;
 
 namespace CS2GameHelper.Utils;
 
@@ -81,27 +80,27 @@ public class ConfigManager
             }
 
             var json = File.ReadAllText(ConfigFile);
-            var options = JsonSerializer.Deserialize<ConfigManager>(json, new JsonSerializerOptions
+
+            var options = new JsonSerializerOptions
             {
                 PropertyNameCaseInsensitive = true,
                 ReadCommentHandling = JsonCommentHandling.Skip,
                 AllowTrailingCommas = true
-            });
+            };
+            options.Converters.Add(new KeysJsonConverter()); // ← ДОБАВЛЕНО
 
-            // Если десериализация частично провалилась — подставляем дефолты
-            options ??= Default();
+            var config = JsonSerializer.Deserialize<ConfigManager>(json, options);
 
-            // Убедимся, что вложенные объекты не null
-            options.Esp ??= new EspConfig();
-            options.Esp.Box ??= new EspConfig.BoxConfig();
-            options.Esp.Radar ??= new EspConfig.RadarConfig();
-            options.SpectatorList ??= new SpectatorListConfig();
+            config ??= Default();
+            config.Esp ??= new EspConfig();
+            config.Esp.Box ??= new EspConfig.BoxConfig();
+            config.Esp.Radar ??= new EspConfig.RadarConfig();
+            config.SpectatorList ??= new SpectatorListConfig();
 
-            return options;
+            return config;
         }
         catch
         {
-            // При любой ошибке — возвращаем дефолт и сохраняем его
             var fallback = Default();
             Save(fallback);
             return fallback;
@@ -112,16 +111,19 @@ public class ConfigManager
     {
         try
         {
-            var json = JsonSerializer.Serialize(options, new JsonSerializerOptions
+            var jsonOptions = new JsonSerializerOptions
             {
                 WriteIndented = true,
-                PropertyNamingPolicy = JsonNamingPolicy.CamelCase // опционально: делает JSON "красивым"
-            });
+                PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+            };
+            jsonOptions.Converters.Add(new KeysJsonConverter()); // ← ДОБАВЛЕНО
+
+            var json = JsonSerializer.Serialize(options, jsonOptions);
             File.WriteAllText(ConfigFile, json);
         }
         catch
         {
-            // Игнорируем ошибки записи (например, нет прав)
+            // Игнор
         }
     }
 

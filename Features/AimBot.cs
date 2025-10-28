@@ -1,4 +1,3 @@
-// ExternalCS2/Features/AimBot.cs
 using System;
 using System.Drawing;
 using System.Numerics;
@@ -10,13 +9,14 @@ using CS2GameHelper.Data.Game;
 using CS2GameHelper.Features.Aiming;
 using CS2GameHelper.Graphics;
 using CS2GameHelper.Utils;
-using static CS2GameHelper.Utils.UserInputHandler;
 using Point = System.Drawing.Point;
+using Keys = CS2GameHelper.Utils.Keys;
 
 namespace CS2GameHelper.Features
 {
     public enum AimBotState { Up, DownSuppressed, Down }
-    public record AimTargetResult(bool Found, Vector3 TargetPosition, Vector2 AimAngles, float Distance, int TargetId);
+
+    public record AimTargetResult(bool Found, Vector3 TargetPosition, Vector2 AimAngles, float Distance, int TargetId, Vector3 TargetVelocity);
 
     public class AimBot : ThreadedServiceBase
     {
@@ -33,19 +33,16 @@ namespace CS2GameHelper.Features
         private const int MinShootIntervalMs = 100;
 
         private readonly ConfigManager _config = ConfigManager.Load();
-        private readonly AimTrainer _aimTrainer = new AimTrainer();
         private readonly Keys _aimBotHotKey;
         private readonly object _stateLock = new();
         private readonly Random _humanizationRandom = new();
 
-        // --- ВОССТАНОВЛЕННЫЕ И НОВЫЕ ПОЛЯ ---
         private static double _anglePerPixelHorizontal = 1;
         private static double _anglePerPixelVertical = 1;
 
-        private readonly NeuralAimTrainer _neuralTrainer;
+        private readonly CompositeAimProvider _correctionProvider;
         private readonly TargetSelector _targetSelector;
         private readonly UserInputHandler _inputHandler;
-        // -----------------------------------------
 
         private AimBotState _currentState = AimBotState.Up;
         private double _aiAggressiveness = 1.0;
@@ -62,17 +59,16 @@ namespace CS2GameHelper.Features
         private DateTime _lastShotTime = DateTime.MinValue;
         private bool _isCalibrated;
 
-        public AimBot(GameProcess gameProcess, GameData gameData)
+        public AimBot(GameProcess gameProcess, GameData gameData, UserInputHandler inputHandler)
         {
             GameProcess = gameProcess;
             GameData = gameData;
-            _aimBotHotKey = _config.AimBotKey;
+            _aimBotHotKey = ConfigManager.Load().AimBotKey;
+            _inputHandler = inputHandler; // ← используем внешний handler
 
-            _neuralTrainer = new NeuralAimTrainer();
+            _correctionProvider = new CompositeAimProvider();
             _targetSelector = new TargetSelector();
-            _inputHandler = new UserInputHandler();
-            // Add a short console debug message so we know the neural aim subsystem is active
-            Console.WriteLine("[NeuralAimBot] Initialized AimBot and neural trainer.");
+            Console.WriteLine("[AimBot] Initialized with composite correction and shared input handler.");
         }
 
         protected override string ThreadName => nameof(AimBot);
@@ -81,21 +77,22 @@ namespace CS2GameHelper.Features
 
         public override void Dispose()
         {
-            _aimTrainer.Save();
-            _neuralTrainer.Dispose();
+            _correctionProvider.Save();
+            _correctionProvider.Dispose();
             _inputHandler.Dispose();
             base.Dispose();
         }
 
-        private bool IsHotKeyDown() => (User32.GetAsyncKeyState((int)_aimBotHotKey) & 0x8000) != 0;
+        // Используем UserInputHandler для проверки хоткея
+        private bool IsHotKeyDown() => _inputHandler.IsKeyDown(_aimBotHotKey);
+
         private static bool TryMouseMoveNew(Point aimPixels)
         {
             if (aimPixels.X == 0 && aimPixels.Y == 0) return false;
             if (Math.Abs(aimPixels.X) > 100 || Math.Abs(aimPixels.Y) > 100) return false;
-            Utility.WindMouseMove(0, 0, aimPixels.X, aimPixels.Y, 9.0, 3.0, 15.0, 12.0);
+            Utility.WindMouseMove(aimPixels.X, aimPixels.Y, G_0: 9.0, W_0: 3.0, M_0: 15.0, D_0: 12.0);
             return true;
         }
-        private static MouseMoveMethod MouseMoveMethod => MouseMoveMethod.TryMouseMoveNew;
 
         protected override void FrameAction()
         {
@@ -129,8 +126,16 @@ namespace CS2GameHelper.Features
                 if (_aimTotalCount > 0 && (DateTime.Now - _lastAimEvent).TotalMilliseconds > AimEventWindowMs)
                 {
                     var successRate = _aimSuccessCount / (double)_aimTotalCount;
-                    if (successRate < 0.5) { _dynamicFov = Math.Max(GraphicsMath.DegreeToRadian(5f), _dynamicFov - GraphicsMath.DegreeToRadian(0.5f)); _dynamicSmoothing = Math.Min(_dynamicSmoothing + 0.5, 10.0); }
-                    else if (successRate > 0.8) { _dynamicFov = Math.Min(GraphicsMath.DegreeToRadian(30f), _dynamicFov + GraphicsMath.DegreeToRadian(0.5f)); _dynamicSmoothing = Math.Max(_dynamicSmoothing - 0.5, 1.0); }
+                    if (successRate < 0.5)
+                    {
+                        _dynamicFov = Math.Max(GraphicsMath.DegreeToRadian(5f), _dynamicFov - GraphicsMath.DegreeToRadian(0.5f));
+                        _dynamicSmoothing = Math.Min(_dynamicSmoothing + 0.5, 10.0);
+                    }
+                    else if (successRate > 0.8)
+                    {
+                        _dynamicFov = Math.Min(GraphicsMath.DegreeToRadian(30f), _dynamicFov + GraphicsMath.DegreeToRadian(0.5f));
+                        _dynamicSmoothing = Math.Max(_dynamicSmoothing - 0.5, 1.0);
+                    }
                     _aimSuccessCount = 0; _aimTotalCount = 0; _lastAimEvent = DateTime.Now;
                 }
 
@@ -140,31 +145,28 @@ namespace CS2GameHelper.Features
                 if (aimResult.Found)
                 {
                     AimingMath.GetAimAngles(GameData.Player, aimResult.TargetPosition, out _, out var angles);
-                    aimResult = aimResult with { AimAngles = angles };
-                    
-                    AimingMath.GetAimPixels(aimResult.AimAngles, _anglePerPixelHorizontal, _anglePerPixelVertical, out aimPixels);
+                    AimingMath.GetAimPixels(angles, _anglePerPixelHorizontal, _anglePerPixelVertical, out aimPixels);
 
-                    _neuralTrainer.AddDataPoint(aimResult.TargetPosition, GameData.Player.EyePosition, aimResult.AimAngles);
-                    Vector2 neuralCorrection = _neuralTrainer.GetCorrection(aimResult.TargetPosition, GameData.Player.EyePosition);
-                    
-                    if (_aimTrainer != null)
-                    {
-                        var statCorrection = _aimTrainer.GetCorrection(aimResult.Distance);
-                        neuralCorrection.X += statCorrection.X;
-                        neuralCorrection.Y += statCorrection.Y;
-                    }
-                    
-                    aimPixels.X = (int)Math.Round(aimPixels.X - neuralCorrection.X);
-                    aimPixels.Y = (int)Math.Round(aimPixels.Y - neuralCorrection.Y);
+                    var correction = _correctionProvider.GetCorrection(
+                        aimResult.Distance,
+                        aimResult.TargetPosition,
+                        GameData.Player.EyePosition,
+                        aimResult.TargetVelocity
+                    );
+
+                    aimPixels.X = (int)Math.Round(aimPixels.X - correction.X);
+                    aimPixels.Y = (int)Math.Round(aimPixels.Y - correction.Y);
                 }
 
                 ApplyHumanizedAimAdjustments(ref aimPixels, aimResult);
-                
+
                 aimPixels.X = Math.Max(Math.Min(aimPixels.X, 50), -50);
                 aimPixels.Y = Math.Max(Math.Min(aimPixels.Y, 50), -50);
 
                 var adapt = _aiAggressiveness;
-                if ((DateTime.Now - _inputHandler.LastMouseMoveTime).TotalMilliseconds < UserMouseDeltaResetMs) adapt *= 0.5;
+                if ((DateTime.Now - _inputHandler.LastMouseMoveTime).TotalMilliseconds < UserMouseDeltaResetMs)
+                    adapt *= 0.5;
+
                 aimPixels.X = (int)(aimPixels.X * adapt);
                 aimPixels.Y = (int)(aimPixels.Y * adapt);
 
@@ -183,35 +185,60 @@ namespace CS2GameHelper.Features
 
                 shouldWait |= TryMouseMoveNew(aimPixels);
 
-                if (shouldWait) Thread.Sleep(20);
+                if (shouldWait) Thread.Sleep(1); // минимальная пауза
 
                 if (aimResult.Found) _aimSuccessCount++;
 
-                if (aimResult.Found && _aimTrainer != null)
+                // === СБОР ОСТАТКОВ БЕЗ SLEEP ===
+                if (aimResult.Found && GameData?.Player != null)
                 {
-                    Thread.Sleep(40);
-                    if (GameData?.Player != null)
-                    {
-                        var aimAfter = GameData.Player.EyeDirection;
-                        var aimBefore = GameData.Player.AimDirection;
-                        var yawBefore = AimingMath.GetYaw(aimBefore);
-                        var yawAfter = AimingMath.GetYaw(aimAfter);
-                        var pitchBefore = AimingMath.GetPitch(aimBefore);
-                        var pitchAfter = AimingMath.GetPitch(aimAfter);
-                        var deltaYaw = AimingMath.NormalizeRadians(yawAfter - yawBefore);
-                        var deltaPitch = pitchAfter - pitchBefore;
-                        var residualPixelsX = deltaYaw / _anglePerPixelHorizontal;
-                        var residualPixelsY = deltaPitch / _anglePerPixelVertical;
-                        _aimTrainer.AddObservation(aimResult.Distance, (float)residualPixelsX, (float)residualPixelsY);
-                    }
+                    // 1. Сохраняем НАПРАВЛЕНИЕ ДО движения мыши
+                    var aimDirectionBefore = GameData.Player.AimDirection;
+
+                    // 2. Вычисляем ЖЕЛАЕМЫЙ вектор взгляда
+                    var desiredDirection = (aimResult.TargetPosition - GameData.Player.EyePosition).GetNormalized();
+
+                    // 3. Вычисляем УГЛОВУЮ ошибку (в радианах)
+                    var horizontalError = desiredDirection.GetSignedAngleTo(aimDirectionBefore, new Vector3(0, 0, 1));
+                    var verticalError = desiredDirection.GetSignedAngleTo(aimDirectionBefore,
+                        Vector3.Cross(desiredDirection, new Vector3(0, 0, 1)).GetNormalized());
+
+                    // 4. Конвертируем ошибку в ПИКСЕЛИ (как если бы мы её компенсировали)
+                    var errorPixelsX = horizontalError / _anglePerPixelHorizontal;
+                    var errorPixelsY = verticalError / _anglePerPixelVertical;
+
+                    // 5. Но мы уже ВЫПОЛНИЛИ коррекцию через aimPixels!
+                    //    Поэтому реальный остаток = ошибка ДО коррекции - то, что мы применили
+                    var appliedCorrectionX = aimPixels.X;
+                    var appliedCorrectionY = aimPixels.Y;
+
+                    var residualX = (float)(errorPixelsX - appliedCorrectionX);
+                    var residualY = (float)(errorPixelsY - appliedCorrectionY);
+
+                    // 6. Добавляем наблюдение
+                    _correctionProvider.AddObservation(
+                        aimResult.Distance,
+                        aimResult.TargetPosition,
+                        GameData.Player.EyePosition,
+                        aimResult.TargetVelocity,
+                        residualX,
+                        residualY
+                    );
                 }
 
-                if (!aimResult.Found) { _activeTargetId = -1; _lastTargetLockTime = DateTime.MinValue; }
+                if (!aimResult.Found)
+                {
+                    _activeTargetId = -1;
+                    _lastTargetLockTime = DateTime.MinValue;
+                }
                 _aimTotalCount++;
             }
-            catch (Exception ex) { Console.WriteLine($"[NeuralAimBot ERROR] {ex.Message}\n{ex.StackTrace}"); }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[AimBot ERROR] {ex.Message}\n{ex.StackTrace}");
+            }
         }
-        
+
         private bool TryMouseDown()
         {
             var mouseDown = false;
@@ -237,7 +264,7 @@ namespace CS2GameHelper.Features
 
             var lockDuration = (DateTime.Now - _lastTargetLockTime).TotalMilliseconds;
             var pixelDistance = Math.Sqrt(aimPixels.X * (double)aimPixels.X + aimPixels.Y * (double)aimPixels.Y);
-            
+
             if (pixelDistance > 0)
             {
                 var gain = Math.Clamp(pixelDistance / HumanEaseDistancePixels, HumanMinimumGain, 1.0);
