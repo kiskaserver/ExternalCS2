@@ -7,20 +7,20 @@
   <img src="https://img.shields.io/badge/C%23-10.0-239120?style=for-the-badge&logo=c-sharp&logoColor=white">
   <img src="https://img.shields.io/badge/TorchSharp%20GPU-0.105.1-0769AD?style=for-the-badge&logo=nuget&logoColor=white">
   <img src="https://img.shields.io/badge/TorchSharp%20CPU-0.105.1-0769AD?style=for-the-badge&logo=nuget&logoColor=white">
-  <img src="https://img.shields.io/badge/SkiaSharp-latest-0C9D58?style=for-the-badge&logo=nuget&logoColor=white">
-  <img src="https://img.shields.io/badge/Silk.NET-OpenGL-0078D6?style=for-the-badge&logo=nuget&logoColor=white">
-  <img src="https://img.shields.io/badge/System.Text.Json-latest-5C2D91?style=for-the-badge&logo=nuget&logoColor=white">
-  <img src="https://img.shields.io/badge/System.Drawing.Common-latest-5C2D91?style=for-the-badge&logo=nuget&logoColor=white">
-  <img src="https://img.shields.io/badge/xUnit-latest-FF6F00?style=for-the-badge&logo=xunit&logoColor=white">
+  <img src="https://img.shields.io/badge/SkiaSharp-latest-00C7B7?style=for-the-badge&logo=skia&logoColor=white">
+  <img src="https://img.shields.io/badge/Silk.NET-OpenGL-0096FF?style=for-the-badge&logo=opengl&logoColor=white">
+  <img src="https://img.shields.io/badge/System.Text.Json-latest-5C2D91?style=for-the-badge&logo=json&logoColor=white">
+  <img src="https://img.shields.io/badge/System.Drawing.Common-latest-5C2D91?style=for-the-badge&logo=paintbrush&logoColor=white">
+  <img src="https://img.shields.io/badge/xUnit-latest-FF6F00?style=for-the-badge&logo=testinglibrary&logoColor=white">
   <img src="https://img.shields.io/badge/Game-CS2-black?style=for-the-badge&logo=counter-strike&logoColor=white">
-  <img src="https://img.shields.io/badge/Type-External-0078D6?style=for-the-badge">
-  <img src="https://img.shields.io/github/last-commit/kiskaserver/ExternalCS2/main?style=for-the-badge&label=last%20commit">
-  <img src="https://img.shields.io/github/v/release/kiskaserver/ExternalCS2?style=for-the-badge&label=stable%20release">
-  <img src="https://img.shields.io/badge/license-MIT-blue?style=for-the-badge">
-  <img src="https://img.shields.io/badge/offsets%20auto%20update-D06B57?style=for-the-badge">
-  <img src="https://img.shields.io/badge/undetected-03C75A?style=for-the-badge">
-  <img src="https://img.shields.io/badge/fullscreen-supported-76B900?style=for-the-badge">
-  <img src="https://img.shields.io/badge/code%20quality-A%2B-76B900?style=for-the-badge">
+  <img src="https://img.shields.io/badge/Type-External-0078D6?style=for-the-badge&logo=windowsterminal&logoColor=white">
+  <img src="https://img.shields.io/github/last-commit/kiskaserver/ExternalCS2/main?style=for-the-badge&label=Last%20Commit&color=512BD4&logo=github&logoColor=white">
+  <img src="https://img.shields.io/github/v/release/kiskaserver/ExternalCS2?style=for-the-badge&label=Stable%20Release&color=0078D6&logo=github&logoColor=white">
+  <img src="https://img.shields.io/badge/license-MIT-2D9CDB?style=for-the-badge&logo=open-source-initiative&logoColor=white">
+  <img src="https://img.shields.io/badge/offsets%20auto%20update-D06B57?style=for-the-badge&logo=autodesk&logoColor=white">
+  <img src="https://img.shields.io/badge/undetected-03C75A?style=for-the-badge&logo=shield&logoColor=white">
+  <img src="https://img.shields.io/badge/fullscreen-supported-76B900?style=for-the-badge&logo=monitor&logoColor=white">
+  <img src="https://img.shields.io/badge/code%20quality-A%2B-76B900?style=for-the-badge&logo=codefactor&logoColor=white">
 </p>
 
 <details>
