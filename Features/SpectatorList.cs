@@ -29,11 +29,7 @@ public static class SpectatorList
             // <<< КЛЮЧЕВАЯ ЛОГИКА: Проверяем, что это мертвый игрок
             if (entity.IsAlive() || entity.AddressBase == player.AddressBase) continue;
     
-            // <<< КЛЮЧЕВАЯ ЛОГИКА: Проверяем, наблюдает ли он за локальным игроком
-            // У сущностей спектатора есть свойство, указывающее, за кем они смотрят.
-            // Это обычно указатель на сущность, за которой следят.
-            // Если он совпадает с адресом локального игрока, значит он смотрит на нас.
-            var spectatorTarget = entity.ObserverTarget; // Предполагаем, что у вас есть такое свойство
+            var spectatorTarget = entity.ObserverTarget;
             
             if (spectatorTarget == player.AddressBase)
             {

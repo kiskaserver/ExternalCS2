@@ -516,8 +516,10 @@ public class ModernGraphics : ThreadedServiceBase
                 if (config.SkeletonEsp) SkeletonEsp.Draw(this);
                 if (config.BombTimer) BombTimer.Draw(this);
                 if (config.SpectatorList.Enabled) SpectatorList.Draw(this);
-                HitSound.Process(this);
-                HitSound.DrawHitTexts(this);
+                if (config.HitSound.Enabled) {
+                    HitSound.Process(this);
+                    HitSound.DrawHitTexts(this);
+                }
             }
             else if (hasWindow)
             {

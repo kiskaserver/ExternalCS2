@@ -143,10 +143,11 @@ ExternalCS2/
 └── Program.cs              # Application entry point
 ```
 
-**Important DTOs**
+## Offsets
 
-- `Data/Offsets/ClientDllDTO.cs` — auto-updated from https://github.com/sezzyaep/CS2-OFFSETS  
-- `Data/Offsets/OffsetsDTO.cs` — auto-updated from https://github.com/sezzyaep/CS2-OFFSETS
+Offsets used by the application are read at runtime from the `offsets/` folder located in the repository root. The loader implemented in `Utils/Offsets.cs` reads plain JSON files (for example `client_dll.json`) and maps the required fields into the runtime static offset fields used throughout the project.
+
+Note: the runtime does not depend on generated DTO classes such as `ClientDllDTO` or `OffsetsDTO`. If such DTO files exist in the repository they are provided for reference or historical purposes only; the current code prefers the JSON files placed in `offsets/`.
 
 ## Configuration (config.json)
 

@@ -9,15 +9,17 @@ This document explains how the project's AimBot works, where the code lives, key
 
 ## Files & Code References
 - **Main implementation:** `Features/AimBot.cs` (class `AimBot`).
-- **Statistical trainer:** `Core/AimTrainer.cs` (class `AimTrainer`).
+- **Input handler / hotkeys:** `Utils/Keys.cs`, `Utils/KeysJsonConverter.cs`, and the injected `UserInputHandler` (see `Features/AimBot.cs` constructor).
+- **Correction providers:** `Core/CompositeAimProvider.cs` (combines statistical + neural corrections), `Core/AimTrainer.cs` (statistical trainer), `Core/NeuralAimNetwork.cs` (neural model).
+- **Target selection / aiming helpers:** `Features/Aiming/TargetSelector.cs`, `Features/Aiming/AimingMath.cs`.
 - **Model files written at runtime:**
-  - Neural model: `aim_model.pth` (TorchSharp model saved/loaded by `NeuralAimNetwork`).
-  - Statistical trainer storage: `aim_trainer.json` (written by `AimTrainer.Save()` — created in application base directory).
+   - Neural model: `aim_model.pth` (TorchSharp model saved/loaded by `NeuralAimNetwork`).
+   - Statistical trainer storage: `aim_trainer.json` (written by `AimTrainer.Save()` — created in application base directory).
 
 ## High-Level Algorithm (per frame / tick)
 1. **Input gating**
-   - AimBot runs only when manual hotkey (`aimBotKey`) is held or `aimBotAutoShoot` is enabled.
-   - Large recent mouse movement (`HumanReactThreshold`) suppresses bot action temporarily (`SuppressMs`).
+   - AimBot runs only when manual hotkey (`aimBotKey`) is held or `aimBotAutoShoot` is enabled. Hotkey checks now use the injected `UserInputHandler` (not System.Windows.Forms).
+   - Large recent mouse movement (`HumanReactThreshold`) suppresses bot action temporarily (`SuppressMs`). The `UserInputHandler` exposes recent mouse deltas used for suppression.
 
 2. **Calibration**
    - Computes angles-per-pixel using sampled mouse movements (`CalibrationMeasureHorizontalAnglePerPixel`, `CalibrationMeasureVerticalAnglePerPixel`).
@@ -30,7 +32,7 @@ This document explains how the project's AimBot works, where the code lives, key
 
 4. **Correction calculation**
    - Converts desired angles to pixels (`GetAimPixels`) using calibrated angles-per-pixel.
-   - Applies stacked corrections: statistical (`AimTrainer.GetCorrection`) + neural network (`NeuralAimNetwork`).
+   - Applies stacked corrections via `CompositeAimProvider` which composes statistical corrections from `AimTrainer` and predictions from `NeuralAimNetwork`.
 
 5. **Humanization & smoothing**
    - `ApplyHumanizedAimAdjustments` adds easing, jitter, scaling.
@@ -52,7 +54,7 @@ This document explains how the project's AimBot works, where the code lives, key
 - `GetAimAngles(...)`, `GetAimPixels(...)` — compute transforms.
 - `ApplyHumanizedAimAdjustments(ref Point aimPixels, bool hasTarget)` — humanization.
 - `TrainNeuralNetwork()` — tensor formation and optimizer step.
-- `Calibrate()` — angles-per-pixel calibration.
+- `Calibrate()` — angles-per-pixel calibration (now run lazily on first frame and uses multiple samples).
 
 ## Design Rationale & Safety Measures
 - User-first suppression avoids fighting manual input.
@@ -122,3 +124,20 @@ flowchart TD
 * Neural predicts (-1.5, 0.7), AimTrainer mean (-0.5, 0.0)
 * Total correction: (-2.0, 0.7) → final pixel target = (18, 0.7)
 
+## Recent changes / migration notes
+
+This project refactored the AimBot implementation — here's what changed and what to look for in the code:
+
+- Hotkeys and input: the code no longer depends on `System.Windows.Forms.Keys`. A small project-local enum `Utils.Keys` is used instead (see `Utils/Keys.cs`). JSON parsing supports both enum names and numeric values thanks to `Utils/KeysJsonConverter` (registered in `ConfigManager`). At runtime the `AimBot` receives an injected `UserInputHandler` which centralizes input state (latest mouse delta, last move time, key-down checks) — hotkey checks call `UserInputHandler.IsKeyDown(_aimBotHotKey)`.
+
+- Constructor & wiring: `AimBot` is now constructed with `GameProcess`, `GameData` and a `UserInputHandler` instance. It no longer directly reads global input state; this improves testability and separation of concerns.
+
+- Modular corrections: correction logic was moved into `Core/CompositeAimProvider` which unifies contributions from `Core/AimTrainer` (statistical residual averaging) and `Core/NeuralAimNetwork` (learned corrections). To add/remove correction sources, update `CompositeAimProvider` instead of editing `AimBot` core.
+
+- Target selection separated: target selection and prediction logic are in `Features/Aiming/TargetSelector.cs` and helper math remains in `AimingMath`. `AimBot` requests a target (`FindBestTarget`) and applies corrections to the returned angles/position.
+
+- Calibration behavior: calibration of angles-per-pixel is now lazy — the bot performs a few small sample moves on first use and computes averaged horizontal/vertical samples. This avoids early incorrect calibration and reduces startup noise.
+
+- Residual collection signature: when collecting residuals the code records richer context (distance, target position, player eye position, target velocity) and the residual pixel errors. `CompositeAimProvider.AddObservation(...)` (and underlying trainers) now expect these parameters to keep statistics per-distance and per-context.
+
+- Mouse movement and shooting: movement is performed via `Utility.WindMouseMove(...)` and `Utility.MouseLeftDown()`; AimBot uses an internal `AimBotState` enum to manage suppressed/active down states. `TryMouseDown()` is responsible for respecting suppression and state transitions.
