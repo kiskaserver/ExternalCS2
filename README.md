@@ -2,40 +2,33 @@
 
 > Important: This project is for research and educational purposes only. Using these tools to gain an unfair advantage in online multiplayer games violates Valve's Terms of Service and will likely result in a permanent account ban.
 
-<p align="center">
-  <img src="https://img.shields.io/badge/.NET-8.0-512BD4?style=for-the-badge&logo=dotnet&logoColor=white">
-  <img src="https://img.shields.io/badge/C%23-10.0-239120?style=for-the-badge&logo=c-sharp&logoColor=white">
-  <img src="https://img.shields.io/badge/TorchSharp%20GPU-0.105.1-0769AD?style=for-the-badge&logo=nuget&logoColor=white">
-  <img src="https://img.shields.io/badge/TorchSharp%20CPU-0.105.1-0769AD?style=for-the-badge&logo=nuget&logoColor=white">
-  <img src="https://img.shields.io/badge/SkiaSharp-latest-00C7B7?style=for-the-badge&logo=skia&logoColor=white">
-  <img src="https://img.shields.io/badge/Silk.NET-OpenGL-0096FF?style=for-the-badge&logo=opengl&logoColor=white">
-  <img src="https://img.shields.io/badge/System.Text.Json-latest-5C2D91?style=for-the-badge&logo=json&logoColor=white">
-  <img src="https://img.shields.io/badge/System.Drawing.Common-latest-5C2D91?style=for-the-badge&logo=paintbrush&logoColor=white">
-  <img src="https://img.shields.io/badge/xUnit-latest-FF6F00?style=for-the-badge&logo=testinglibrary&logoColor=white">
-  <img src="https://img.shields.io/badge/Game-CS2-black?style=for-the-badge&logo=counter-strike&logoColor=white">
-  <img src="https://img.shields.io/badge/Type-External-0078D6?style=for-the-badge&logo=windowsterminal&logoColor=white">
-  <img src="https://img.shields.io/github/last-commit/kiskaserver/ExternalCS2/main?style=for-the-badge&label=Last%20Commit&color=512BD4&logo=github&logoColor=white">
-  <img src="https://img.shields.io/github/v/release/kiskaserver/ExternalCS2?style=for-the-badge&label=Stable%20Release&color=0078D6&logo=github&logoColor=white">
-  <img src="https://img.shields.io/badge/license-MIT-2D9CDB?style=for-the-badge&logo=open-source-initiative&logoColor=white">
-  <img src="https://img.shields.io/badge/offsets%20auto%20update-D06B57?style=for-the-badge&logo=autodesk&logoColor=white">
-  <img src="https://img.shields.io/badge/undetected-03C75A?style=for-the-badge&logo=shield&logoColor=white">
-  <img src="https://img.shields.io/badge/fullscreen-supported-76B900?style=for-the-badge&logo=monitor&logoColor=white">
-  <img src="https://img.shields.io/badge/code%20quality-A%2B-76B900?style=for-the-badge&logo=codefactor&logoColor=white">
-</p>
+## 💻 Tech Stack
+<img src="https://img.shields.io/badge/.NET-8.0-512BD4?style=for-the-badge&logo=dotnet&logoColor=white" alt=".NET 8.0">
+<img src="https://img.shields.io/badge/C%23-10.0-239120?style=for-the-badge&logo=c-sharp&logoColor=white" alt="C# 10.0">
+<img src="https://img.shields.io/badge/TorchSharp%20GPU-0.105.1-FF6F00?style=for-the-badge&logo=pytorch&logoColor=white" alt="TorchSharp GPU">
+<img src="https://img.shields.io/badge/TorchSharp%20CPU-0.105.1-F57C00?style=for-the-badge&logo=processor&logoColor=white" alt="TorchSharp CPU">
+<img src="https://img.shields.io/badge/SkiaSharp-latest-00C7B7?style=for-the-badge&logo=skia&logoColor=white" alt="SkiaSharp">
+<img src="https://img.shields.io/badge/Silk.NET-OpenGL-0096FF?style=for-the-badge&logo=opengl&logoColor=white" alt="Silk.NET OpenGL">
+<img src="https://img.shields.io/badge/System.Text.Json-latest-7E57C2?style=for-the-badge&logo=json&logoColor=white" alt="System.Text.Json">
+<img src="https://img.shields.io/badge/System.Drawing.Common-latest-9575CD?style=for-the-badge&logo=paintbrush&logoColor=white" alt="System.Drawing.Common">
+<img src="https://img.shields.io/badge/xUnit-latest-FF6F00?style=for-the-badge&logo=xunit&logoColor=white" alt="xUnit">
 
-<details>
-<summary>Tech stack & libraries</summary>
+---
 
-- Language / runtime: C# / .NET 8.0 (net8.0-windows)
-- Neural network: TorchSharp (CUDA package: `TorchSharp-cuda-windows`; CPU alternative: `TorchSharp-windows`)
-- Graphics & rendering: SkiaSharp
-- Windowing / OpenGL: Silk.NET (OpenGL, Windowing, Input)
-- JSON config: System.Text.Json
-- Numerics: System.Numerics.Vectors
-- Drawing utilities: System.Drawing.Common
-- Testing: xUnit (`xunit`, `xunit.runner.visualstudio`, `Microsoft.NET.Test.Sdk`)
-- Low-level input / WinAPI interop: custom wrappers in `Core/Kernel32.cs` and `Core/User32.cs`
-</details>
+## 🎮 Project Status
+<img src="https://img.shields.io/badge/Game-CS2-1E1E1E?style=for-the-badge&logo=counter-strike&logoColor=white" alt="Game: CS2">
+<img src="https://img.shields.io/badge/Type-External-DDDDDD?style=for-the-badge&logo=eye&logoColor=444444" alt="External Type">
+<img src="https://img.shields.io/badge/Status-Undetected-03C75A?style=for-the-badge&logo=shield-check&logoColor=white" alt="Status: Undetected">
+<img src="https://img.shields.io/badge/Offsets-Auto%20Update-4CAF50?style=for-the-badge&logo=refresh&logoColor=white" alt="Offsets Auto Update">
+<img src="https://img.shields.io/badge/Fullscreen-Supported-2E7D32?style=for-the-badge&logo=monitor&logoColor=white" alt="Fullscreen Supported">
+<img src="https://img.shields.io/badge/Code%20Quality-A%2B-81C784?style=for-the-badge&logo=codefactor&logoColor=white" alt="Code Quality A+">
+
+---
+
+## 🛠️ Repository Info
+<img src="https://img.shields.io/github/last-commit/kiskaserver/ExternalCS2/main?style=for-the-badge&label=Last%20Commit&color=0078D6&logo=github&logoColor=white" alt="Last Commit">
+<img src="https://img.shields.io/github/v/release/kiskaserver/ExternalCS2?style=for-the-badge&label=Stable%20Release&color=00A3E0?style=for-the-badge&logo=tag&logoColor=white" alt="Stable Release">
+<img src="https://img.shields.io/badge/License-MIT-2D9CDB?style=for-the-badge&logo=mit&logoColor=white" alt="License: MIT">
 
 ## Table of Contents
 
