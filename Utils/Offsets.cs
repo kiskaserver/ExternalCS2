@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Dynamic;
+using System.IO;
 using System.Net.Http;
 using System.Text.Json;
 
@@ -102,113 +103,145 @@ public abstract class Offsets
         { "ankle_R", 27 }
     };
 
+    private static readonly string _offsetsDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "offsets");
+    private static readonly string _localOffsetsPath = Path.Combine(_offsetsDir, "offsets.json");
+    private static readonly string _localClientPath = Path.Combine(_offsetsDir, "client_dll.json");
+
     public static async Task UpdateOffsets()
     {
+        string? offsetsJson = null;
+        string? clientJson = null;
+        bool fromRemote = false;
+
         try
         {
-            var offsetsJson = await FetchJson("https://raw.githubusercontent.com/sezzyaep/CS2-OFFSETS/refs/heads/main/offsets.json");
-            var clientJson = await FetchJson("https://raw.githubusercontent.com/sezzyaep/CS2-OFFSETS/refs/heads/main/client_dll.json");
-
-            using var offsetsDoc = JsonDocument.Parse(offsetsJson);
-            using var clientDoc = JsonDocument.Parse(clientJson);
-
-            var root = offsetsDoc.RootElement;
-            if (!root.TryGetProperty("client.dll", out var clientDllElem))
-                throw new InvalidOperationException("offsets.json is missing 'client.dll'");
-            if (!root.TryGetProperty("engine2.dll", out var engine2Elem))
-                throw new InvalidOperationException("offsets.json is missing 'engine2.dll'");
-
-            var clientRoot = clientDoc.RootElement;
-            if (!clientRoot.TryGetProperty("client.dll", out var clientContainer))
-                throw new InvalidOperationException("client_dll.json is missing 'client.dll'");
-            if (!clientContainer.TryGetProperty("classes", out var classesElem))
-                throw new InvalidOperationException("client_dll.json is missing 'classes'");
-
-            var classes = new Dictionary<string, Dictionary<string, int>>();
-            foreach (var classProp in classesElem.EnumerateObject())
-            {
-                var className = classProp.Name;
-                var fields = new Dictionary<string, int>();
-                if (classProp.Value.TryGetProperty("fields", out var fieldsElem))
-                {
-                    foreach (var field in fieldsElem.EnumerateObject())
-                    {
-                        fields[field.Name] = field.Value.GetInt32();
-                    }
-                }
-                classes[className] = fields;
-            }
-
-            dynamic destData = new ExpandoObject();
-
-            // === Глобальные смещения ===
-            destData.dwBuildNumber = GetInt(engine2Elem, "dwBuildNumber");
-            destData.dwNetworkGameClient = GetInt(engine2Elem, "dwNetworkGameClient");
-            destData.dwNetworkGameClient_serverTickCount = GetInt(engine2Elem, "dwNetworkGameClient_deltaTick");
-            destData.dwWindowHeight = GetInt(engine2Elem, "dwWindowHeight");
-            destData.dwWindowWidth = GetInt(engine2Elem, "dwWindowWidth");
-            destData.dwLocalPlayerController = GetInt(clientDllElem, "dwLocalPlayerController");
-            destData.dwEntityList = GetInt(clientDllElem, "dwEntityList");
-            destData.dwViewMatrix = GetInt(clientDllElem, "dwViewMatrix");
-            destData.dwPlantedC4 = GetInt(clientDllElem, "dwPlantedC4");
-            destData.dwLocalPlayerPawn = GetInt(clientDllElem, "dwLocalPlayerPawn");
-            destData.dwViewAngles = GetInt(clientDllElem, "dwViewAngles");
-            destData.dwGlobalVars = GetInt(clientDllElem, "dwGlobalVars");
-            destData.dwGameRules = GetInt(clientDllElem, "dwGameRules");
-
-            // === Поля классов ===
-            destData.m_fFlags = GetField(classes, "C_BaseEntity", "m_fFlags");
-            destData.m_vOldOrigin = GetField(classes, "C_BasePlayerPawn", "m_vOldOrigin");
-            destData.m_vecViewOffset = GetField(classes, "C_BaseModelEntity", "m_vecViewOffset");
-            destData.m_aimPunchAngle = GetField(classes, "C_CSPlayerPawn", "m_aimPunchAngle");
-            destData.m_modelState = GetField(classes, "CSkeletonInstance", "m_modelState");
-            destData.m_pGameSceneNode = GetField(classes, "C_BaseEntity", "m_pGameSceneNode");
-            destData.m_iIDEntIndex = GetField(classes, "C_CSPlayerPawn", "m_iIDEntIndex");
-            destData.m_lifeState = GetField(classes, "C_BaseEntity", "m_lifeState");
-            destData.m_iHealth = GetField(classes, "C_BaseEntity", "m_iHealth");
-            destData.m_iTeamNum = GetField(classes, "C_BaseEntity", "m_iTeamNum");
-            destData.m_bDormant = GetField(classes, "CGameSceneNode", "m_bDormant");
-            destData.m_iShotsFired = GetField(classes, "C_CSPlayerPawn", "m_iShotsFired");
-            destData.m_hPawn = GetField(classes, "CBasePlayerController", "m_hPawn");
-            destData.m_hObserverTarget = GetField(classes, "CPlayer_ObserverServices", "m_hObserverTarget");
-            destData.m_entitySpottedState = GetField(classes, "C_CSPlayerPawn", "m_entitySpottedState");
-            destData.m_Item = GetField(classes, "C_AttributeContainer", "m_Item");
-            destData.m_pClippingWeapon = GetField(classes, "C_CSPlayerPawn", "m_pClippingWeapon");
-            destData.m_AttributeManager = GetField(classes, "C_EconEntity", "m_AttributeManager");
-            destData.m_iItemDefinitionIndex = GetField(classes, "C_EconItemView", "m_iItemDefinitionIndex");
-            destData.m_bIsScoped = GetField(classes, "C_CSPlayerPawn", "m_bIsScoped");
-            destData.m_flFlashDuration = GetField(classes, "C_CSPlayerPawnBase", "m_flFlashDuration");
-            destData.m_iszPlayerName = GetField(classes, "CBasePlayerController", "m_iszPlayerName");
-            destData.m_nBombSite = GetField(classes, "C_PlantedC4", "m_nBombSite");
-            destData.m_bBombDefused = GetField(classes, "C_PlantedC4", "m_bBombDefused");
-            destData.m_vecAbsVelocity = GetField(classes, "C_BaseEntity", "m_vecAbsVelocity");
-            destData.m_flDefuseCountDown = GetField(classes, "C_PlantedC4", "m_flDefuseCountDown");
-            destData.m_flC4Blow = GetField(classes, "C_PlantedC4", "m_flC4Blow");
-            destData.m_bBeingDefused = GetField(classes, "C_PlantedC4", "m_bBeingDefused");
-            destData.m_bGameRestart = GetField(classes, "C_CSGameRules", "m_bGameRestart");
-
-            destData.m_ArmorValue = GetField(classes, "C_CSPlayerPawn", "m_ArmorValue");
-            destData.m_bHasHelmet = GetField(classes, "CCSPlayer_ItemServices", "m_bHasHelmet");
-            destData.m_bSpotted = GetField(classes, "EntitySpottedState_t", "m_bSpotted");
-            destData.m_angEyeAngles = GetField(classes, "C_CSPlayerPawn", "m_angEyeAngles");
-            destData.m_CBodyComponent = GetField(classes, "C_BaseEntity", "m_CBodyComponent");
-            destData.m_vecOrigin = GetField(classes, "CGameSceneNode", "m_vecOrigin");
-            destData.m_iNumRoundKills = GetField(classes, "CCSPlayerController_ActionTrackingServices", "m_iNumRoundKills");
-            destData.m_flTotalRoundDamageDealt = GetField(classes, "CCSPlayerController_ActionTrackingServices", "m_flTotalRoundDamageDealt");
-            destData.m_pActionTrackingServices = GetField(classes, "CCSPlayerController", "m_pActionTrackingServices");
-            destData.m_hLastAttacker = GetField(classes, "C_BreakableProp", "m_hLastAttacker");
-            destData.m_flDeathInfoTime = GetField(classes, "C_CSPlayerPawn", "m_flDeathInfoTime");
-
-            UpdateStaticFields(destData);
-            Console.WriteLine("[Offsets] Successfully loaded without DTOs.");
+            // Пытаемся загрузить из интернета
+            offsetsJson = await FetchJson("https://raw.githubusercontent.com/sezzyaep/CS2-OFFSETS/refs/heads/main/offsets.json");
+            clientJson = await FetchJson("https://raw.githubusercontent.com/sezzyaep/CS2-OFFSETS/refs/heads/main/client_dll.json");
+            fromRemote = true;
+            Console.WriteLine("[Offsets] Loaded from remote.");
         }
         catch (Exception ex)
         {
-            Console.ForegroundColor = ConsoleColor.Red;
-            Console.WriteLine($"[Offsets] Failed to update: {ex.Message}");
-            Console.ResetColor();
-            throw;
+            Console.WriteLine($"[Offsets] Remote load failed: {ex.Message}. Trying local cache...");
+            // Пытаемся загрузить локально
+            try
+            {
+                if (!File.Exists(_localOffsetsPath) || !File.Exists(_localClientPath))
+                    throw new FileNotFoundException("Local offset files not found.");
+
+                offsetsJson = await File.ReadAllTextAsync(_localOffsetsPath);
+                clientJson = await File.ReadAllTextAsync(_localClientPath);
+                Console.WriteLine("[Offsets] Loaded from local cache.");
+            }
+            catch (Exception localEx)
+            {
+                throw new InvalidOperationException($"Both remote and local offset loading failed. Remote: {ex.Message}. Local: {localEx.Message}");
+            }
         }
+
+        // Сохраняем локально, если загружено из интернета
+        if (fromRemote)
+        {
+            Directory.CreateDirectory(_offsetsDir);
+            await File.WriteAllTextAsync(_localOffsetsPath, offsetsJson);
+            await File.WriteAllTextAsync(_localClientPath, clientJson);
+            Console.WriteLine("[Offsets] Saved local cache.");
+        }
+
+        // Парсим и применя
+        using var offsetsDoc = JsonDocument.Parse(offsetsJson);
+        using var clientDoc = JsonDocument.Parse(clientJson);
+
+        var root = offsetsDoc.RootElement;
+        if (!root.TryGetProperty("client.dll", out var clientDllElem))
+            throw new InvalidOperationException("offsets.json is missing 'client.dll'");
+        if (!root.TryGetProperty("engine2.dll", out var engine2Elem))
+            throw new InvalidOperationException("offsets.json is missing 'engine2.dll'");
+
+        var clientRoot = clientDoc.RootElement;
+        if (!clientRoot.TryGetProperty("client.dll", out var clientContainer))
+            throw new InvalidOperationException("client_dll.json is missing 'client.dll'");
+        if (!clientContainer.TryGetProperty("classes", out var classesElem))
+            throw new InvalidOperationException("client_dll.json is missing 'classes'");
+
+        var classes = new Dictionary<string, Dictionary<string, int>>();
+        foreach (var classProp in classesElem.EnumerateObject())
+        {
+            var className = classProp.Name;
+            var fields = new Dictionary<string, int>();
+            if (classProp.Value.TryGetProperty("fields", out var fieldsElem))
+            {
+                foreach (var field in fieldsElem.EnumerateObject())
+                {
+                    fields[field.Name] = field.Value.GetInt32();
+                }
+            }
+            classes[className] = fields;
+        }
+
+        dynamic destData = new ExpandoObject();
+
+        // === Глобальные смещения ===
+        destData.dwBuildNumber = GetInt(engine2Elem, "dwBuildNumber");
+        destData.dwNetworkGameClient = GetInt(engine2Elem, "dwNetworkGameClient");
+        destData.dwNetworkGameClient_serverTickCount = GetInt(engine2Elem, "dwNetworkGameClient_deltaTick");
+        destData.dwWindowHeight = GetInt(engine2Elem, "dwWindowHeight");
+        destData.dwWindowWidth = GetInt(engine2Elem, "dwWindowWidth");
+        destData.dwLocalPlayerController = GetInt(clientDllElem, "dwLocalPlayerController");
+        destData.dwEntityList = GetInt(clientDllElem, "dwEntityList");
+        destData.dwViewMatrix = GetInt(clientDllElem, "dwViewMatrix");
+        destData.dwPlantedC4 = GetInt(clientDllElem, "dwPlantedC4");
+        destData.dwLocalPlayerPawn = GetInt(clientDllElem, "dwLocalPlayerPawn");
+        destData.dwViewAngles = GetInt(clientDllElem, "dwViewAngles");
+        destData.dwGlobalVars = GetInt(clientDllElem, "dwGlobalVars");
+        destData.dwGameRules = GetInt(clientDllElem, "dwGameRules");
+
+        // === Поля классов ===
+        destData.m_fFlags = GetField(classes, "C_BaseEntity", "m_fFlags");
+        destData.m_vOldOrigin = GetField(classes, "C_BasePlayerPawn", "m_vOldOrigin");
+        destData.m_vecViewOffset = GetField(classes, "C_BaseModelEntity", "m_vecViewOffset");
+        destData.m_aimPunchAngle = GetField(classes, "C_CSPlayerPawn", "m_aimPunchAngle");
+        destData.m_modelState = GetField(classes, "CSkeletonInstance", "m_modelState");
+        destData.m_pGameSceneNode = GetField(classes, "C_BaseEntity", "m_pGameSceneNode");
+        destData.m_iIDEntIndex = GetField(classes, "C_CSPlayerPawn", "m_iIDEntIndex");
+        destData.m_lifeState = GetField(classes, "C_BaseEntity", "m_lifeState");
+        destData.m_iHealth = GetField(classes, "C_BaseEntity", "m_iHealth");
+        destData.m_iTeamNum = GetField(classes, "C_BaseEntity", "m_iTeamNum");
+        destData.m_bDormant = GetField(classes, "CGameSceneNode", "m_bDormant");
+        destData.m_iShotsFired = GetField(classes, "C_CSPlayerPawn", "m_iShotsFired");
+        destData.m_hPawn = GetField(classes, "CBasePlayerController", "m_hPawn");
+        destData.m_hObserverTarget = GetField(classes, "CPlayer_ObserverServices", "m_hObserverTarget");
+        destData.m_entitySpottedState = GetField(classes, "C_CSPlayerPawn", "m_entitySpottedState");
+        destData.m_Item = GetField(classes, "C_AttributeContainer", "m_Item");
+        destData.m_pClippingWeapon = GetField(classes, "C_CSPlayerPawn", "m_pClippingWeapon");
+        destData.m_AttributeManager = GetField(classes, "C_EconEntity", "m_AttributeManager");
+        destData.m_iItemDefinitionIndex = GetField(classes, "C_EconItemView", "m_iItemDefinitionIndex");
+        destData.m_bIsScoped = GetField(classes, "C_CSPlayerPawn", "m_bIsScoped");
+        destData.m_flFlashDuration = GetField(classes, "C_CSPlayerPawnBase", "m_flFlashDuration");
+        destData.m_iszPlayerName = GetField(classes, "CBasePlayerController", "m_iszPlayerName");
+        destData.m_nBombSite = GetField(classes, "C_PlantedC4", "m_nBombSite");
+        destData.m_bBombDefused = GetField(classes, "C_PlantedC4", "m_bBombDefused");
+        destData.m_vecAbsVelocity = GetField(classes, "C_BaseEntity", "m_vecAbsVelocity");
+        destData.m_flDefuseCountDown = GetField(classes, "C_PlantedC4", "m_flDefuseCountDown");
+        destData.m_flC4Blow = GetField(classes, "C_PlantedC4", "m_flC4Blow");
+        destData.m_bBeingDefused = GetField(classes, "C_PlantedC4", "m_bBeingDefused");
+        destData.m_bGameRestart = GetField(classes, "C_CSGameRules", "m_bGameRestart");
+
+        destData.m_ArmorValue = GetField(classes, "C_CSPlayerPawn", "m_ArmorValue");
+        destData.m_bHasHelmet = GetField(classes, "CCSPlayer_ItemServices", "m_bHasHelmet");
+        destData.m_bSpotted = GetField(classes, "EntitySpottedState_t", "m_bSpotted");
+        destData.m_angEyeAngles = GetField(classes, "C_CSPlayerPawn", "m_angEyeAngles");
+        destData.m_CBodyComponent = GetField(classes, "C_BaseEntity", "m_CBodyComponent");
+        destData.m_vecOrigin = GetField(classes, "CGameSceneNode", "m_vecOrigin");
+        destData.m_iNumRoundKills = GetField(classes, "CCSPlayerController_ActionTrackingServices", "m_iNumRoundKills");
+        destData.m_flTotalRoundDamageDealt = GetField(classes, "CCSPlayerController_ActionTrackingServices", "m_flTotalRoundDamageDealt");
+        destData.m_pActionTrackingServices = GetField(classes, "CCSPlayerController", "m_pActionTrackingServices");
+        destData.m_hLastAttacker = GetField(classes, "C_BreakableProp", "m_hLastAttacker");
+        destData.m_flDeathInfoTime = GetField(classes, "C_CSPlayerPawn", "m_flDeathInfoTime");
+
+        UpdateStaticFields(destData);
+        Console.WriteLine("[Offsets] Successfully loaded.");
     }
 
     private static int GetInt(JsonElement obj, string name)
@@ -231,6 +264,7 @@ public abstract class Offsets
     {
         url = url.Trim();
         using var client = new HttpClient();
+        client.Timeout = TimeSpan.FromSeconds(10);
         var content = await client.GetStringAsync(url);
         if (string.IsNullOrWhiteSpace(content) || content.TrimStart().StartsWith("<"))
             throw new InvalidOperationException($"Invalid response from {url}");
