@@ -2,7 +2,7 @@
 
 > Important: This project is for research and educational purposes only. Using these tools to gain an unfair advantage in online multiplayer games violates Valve's Terms of Service and will likely result in a permanent account ban.
 
-<p align="center">
+<div align="center">
 
 ## 💻 Tech Stack
 <img src="https://img.shields.io/badge/.NET-8.0-512BD4?style=for-the-badge&logo=dotnet&logoColor=white" alt=".NET 8.0">
@@ -31,7 +31,8 @@
 <img src="https://img.shields.io/github/last-commit/kiskaserver/ExternalCS2/main?style=for-the-badge&label=Last%20Commit&color=0078D6&logo=github&logoColor=white" alt="Last Commit">
 <img src="https://img.shields.io/github/v/release/kiskaserver/ExternalCS2?style=for-the-badge&label=Stable%20Release&color=00A3E0?style=for-the-badge&logo=tag&logoColor=white" alt="Stable Release">
 <img src="https://img.shields.io/badge/License-MIT-2D9CDB?style=for-the-badge&logo=mit&logoColor=white" alt="License: MIT">
-</p>
+
+</div>
 
 ## Table of Contents
 
