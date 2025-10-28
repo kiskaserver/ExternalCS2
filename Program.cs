@@ -38,7 +38,7 @@ public sealed class Program : IDisposable
         _graphics = new ModernGraphics(_gameProcess, _gameData, _inputHandler);
         _graphics.Start();
 
-        _triggerBot = new TriggerBot(_gameProcess, _gameData);
+        _triggerBot = new TriggerBot(_gameProcess, _gameData, _inputHandler);
         if (features.TriggerBot)
         {
             _triggerBot.Start();

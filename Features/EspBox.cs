@@ -91,8 +91,10 @@ public static class EspBox
 
     public static void Draw(ModernGraphics graphics)
     {
+
         var fullConfig = ConfigManager.Load();
         var espConfig = fullConfig.Esp.Box;
+
         if (!espConfig.Enabled) return;
 
         var player = graphics.GameData.Player;

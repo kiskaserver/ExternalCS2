@@ -10,7 +10,7 @@ public class ConfigManager
     // Основные флаги
     public bool AimBot { get; set; } = true;
     public bool BombTimer { get; set; } = true;
-    public bool EspAimCrosshair { get; set; } = true;
+    // УДАЛЕНО: public bool EspAimCrosshair { get; set; } = true;
     public bool SkeletonEsp { get; set; } = true;
     public bool TriggerBot { get; set; } = true;
     public Keys AimBotKey { get; set; } = Keys.LButton;
@@ -26,6 +26,7 @@ public class ConfigManager
     {
         public BoxConfig Box { get; set; } = new();
         public RadarConfig Radar { get; set; } = new();
+        public AimCrosshairConfig AimCrosshair { get; set; } = new();
 
         public class BoxConfig
         {
@@ -58,6 +59,16 @@ public class ConfigManager
             public string VisibleAlpha { get; set; } = "FF";
             public string InvisibleAlpha { get; set; } = "88";
         }
+
+        public class AimCrosshairConfig
+        {
+            public bool Enabled { get; set; } = true;
+            public int Radius { get; set; } = 6;
+            // ARGB hex string
+            public string Color { get; set; } = "FFFFFFFF";
+            // Recoil scale multiplier applied to punch angles
+            public float RecoilScale { get; set; } = 2f;
+        }
     }
 
     // Spectator list settings
@@ -66,6 +77,26 @@ public class ConfigManager
     public class SpectatorListConfig
     {
         public bool Enabled { get; set; } = true;
+    }
+
+    // Hit sound and on-screen hit text configuration
+    public HitSoundConfig HitSound { get; set; } = new();
+
+    public class HitSoundConfig
+    {
+        public bool Enabled { get; set; } = true;
+        // Colors are ARGB hex strings like "FFFF0000" (opaque red)
+        public string HitColor { get; set; } = "FFFFFFFF"; // white
+        public string HeadshotColor { get; set; } = "FFFFD700"; // gold
+        // Text shown on screen for hit and headshot
+        public string HitText { get; set; } = "HIT";
+        public string HeadshotText { get; set; } = "HEADSHOT";
+        // Paths to sound files (can be absolute or relative to app base dir)
+        public string HitSoundFile { get; set; } = "assets/sounds/hit.wav";
+        public string HeadshotSoundFile { get; set; } = "assets/sounds/headshot.wav";
+        // Advanced settings
+        public int HeadshotDamageThreshold { get; set; } = 100;   // урон ≥ 100 → хедшот
+        public double TextDurationSeconds { get; set; } = 1.5;    // длительность текста в секундах
     }
 
     public static ConfigManager Load()
@@ -87,7 +118,7 @@ public class ConfigManager
                 ReadCommentHandling = JsonCommentHandling.Skip,
                 AllowTrailingCommas = true
             };
-            options.Converters.Add(new KeysJsonConverter()); // ← ДОБАВЛЕНО
+            options.Converters.Add(new KeysJsonConverter());
 
             var config = JsonSerializer.Deserialize<ConfigManager>(json, options);
 
@@ -95,7 +126,9 @@ public class ConfigManager
             config.Esp ??= new EspConfig();
             config.Esp.Box ??= new EspConfig.BoxConfig();
             config.Esp.Radar ??= new EspConfig.RadarConfig();
+            config.Esp.AimCrosshair ??= new EspConfig.AimCrosshairConfig();
             config.SpectatorList ??= new SpectatorListConfig();
+            config.HitSound ??= new HitSoundConfig();
 
             return config;
         }
@@ -116,7 +149,7 @@ public class ConfigManager
                 WriteIndented = true,
                 PropertyNamingPolicy = JsonNamingPolicy.CamelCase
             };
-            jsonOptions.Converters.Add(new KeysJsonConverter()); // ← ДОБАВЛЕНО
+            jsonOptions.Converters.Add(new KeysJsonConverter());
 
             var json = JsonSerializer.Serialize(options, jsonOptions);
             File.WriteAllText(ConfigFile, json);
@@ -135,14 +168,13 @@ public class ConfigManager
             AimBot = true,
             AimBotAutoShoot = true,
             BombTimer = true,
-            EspAimCrosshair = true,
+            // УДАЛЕНО: EspAimCrosshair = true,
             SkeletonEsp = true,
             TriggerBot = true,
             AimBotKey = Keys.LButton,
             TriggerBotKey = Keys.LMenu,
             TeamCheck = true,
 
-            // <<< ИСПРАВЛЕНО: Явно создаем вложенные объекты с их значениями по умолчанию
             Esp = new EspConfig
             {
                 Box = new EspConfig.BoxConfig
@@ -174,11 +206,30 @@ public class ConfigManager
                     TeamColor = "FF0000FF",
                     VisibleAlpha = "FF",
                     InvisibleAlpha = "88"
+                },
+                AimCrosshair = new EspConfig.AimCrosshairConfig
+                {
+                    Enabled = true,
+                    Radius = 6,
+                    Color = "FFFFFFFF",
+                    RecoilScale = 2f
                 }
             },
             SpectatorList = new SpectatorListConfig
             {
                 Enabled = true
+            },
+            HitSound = new HitSoundConfig
+            {
+                Enabled = true,
+                HitColor = "FFFFFFFF",
+                HeadshotColor = "FFFFD700",
+                HitText = "HIT",
+                HeadshotText = "HEADSHOT",
+                HitSoundFile = "assets/sounds/hit.wav",
+                HeadshotSoundFile = "assets/sounds/headshot.wav",
+                HeadshotDamageThreshold = 100,
+                TextDurationSeconds = 1.5
             }
         };
     }

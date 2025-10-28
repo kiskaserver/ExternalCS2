@@ -509,11 +509,15 @@ public class ModernGraphics : ThreadedServiceBase
             {
                 if (config.Esp.Box.Enabled) EspBox.Draw(this);
                 if (config.Esp.Radar.Enabled) Radar.Draw(this);
-                if (config.EspAimCrosshair) EspAimCrosshair.Draw(this);
+                if (config.Esp?.AimCrosshair?.Enabled == true)
+                {
+                    EspAimCrosshair.Draw(this);
+                }
                 if (config.SkeletonEsp) SkeletonEsp.Draw(this);
                 if (config.BombTimer) BombTimer.Draw(this);
                 if (config.SpectatorList.Enabled) SpectatorList.Draw(this);
                 HitSound.Process(this);
+                HitSound.DrawHitTexts(this);
             }
             else if (hasWindow)
             {

@@ -2,7 +2,6 @@
   "aimBot": true,
   "aimBotAutoShoot": true,
   "bombTimer": true,
-  "espAimCrosshair": true,
   "skeletonEsp": false,
   "triggerBot": true,
   "aimBotKey": 1,
@@ -36,9 +35,26 @@
       "teamColor": "FF0000FF",
       "visibleAlpha": "FF",
       "invisibleAlpha": "88"
+    },
+    "aimCrosshair": {
+      "enabled": true,
+      "radius": 6,
+      "color": "FFFFFFFF",
+      "recoilScale": 2.0
     }
   },
   "spectatorList": {
     "enabled": true
+  },
+  "hitSound": {
+    "enabled": true,
+    "hitColor": "FFFFFFFF",
+    "headshotColor": "FFFFD700",
+    "hitText": "HIT",
+    "headshotText": "HEADSHOT",
+    "hitSoundFile": "assets/sounds/hit.wav",
+    "headshotSoundFile": "assets/sounds/headshot.wav",
+    "headshotDamageThreshold": 100,
+    "textDurationSeconds": 1.5
   }
 }
