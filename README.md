@@ -39,7 +39,7 @@
 - [AimBot & Training internals](#aimbot--training-internals)
   - [Detailed design → AimBot.md](AimBot.md)
 - [Debugging & Common Issues](#debugging--common-issues)
-- [Offsets / DTO Auto-update](#offsets--dto-auto-update)
+- [Offsets / DTO Auto-update](#offsets)
 - [Community Feedback / Reviews](#community-feedback--reviews)
 - [License](#license)
 - [Contributing](#contributing)
