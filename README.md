@@ -13,9 +13,9 @@
 [![System.Drawing.Common](https://img.shields.io/nuget/v/System.Drawing.Common?label=System.Drawing.Common&logo=nuget)](https://www.nuget.org/packages/System.Drawing.Common/)
 [![xUnit](https://img.shields.io/nuget/v/xunit?label=xUnit&logo=xunit)](https://www.nuget.org/packages/xunit/)
 [![Game: CS2](https://img.shields.io/badge/Game-CS2-red?logo=steam)](https://store.steampowered.com/app/730/CounterStrike_2/)
-[![Type: External](https://img.shields.io/badge/Type-External-blue)]
-[![Latest commit](https://img.shields.io/badge/last%20commit-unknown-lightgrey)](https://github.com/kiskaserver/ExternalCS2/commits)
-
+[![Type: External](https://img.shields.io/badge/Type-External-blue)](https://unknowncheats.me/forum/forum-general/123519-external-vs-internal-hack.html)
+[![Latest commit](https://img.shields.io/github/last-commit/kiskaserver/ExternalCS2/main.svg)](https://github.com/kiskaserver/ExternalCS2/commits)
+[![Stable release](https://img.shields.io/github/v/release/kiskaserver/ExternalCS2?label=stable%20release)](https://github.com/kiskaserver/ExternalCS2/releases)
 
 <details>
 <summary>Tech stack & libraries</summary>
