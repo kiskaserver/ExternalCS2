@@ -5,6 +5,7 @@ using CS2GameHelper.Data.Game;
 using CS2GameHelper.Features;
 using CS2GameHelper.Graphics;
 using CS2GameHelper.Utils;
+using Keys = CS2GameHelper.Utils.Keys;
 
 namespace CS2GameHelper;
 
@@ -17,13 +18,13 @@ public sealed class Program : IDisposable
     private readonly TriggerBot _triggerBot;
     private readonly AimBot _aimBot;
     private readonly BombTimer _bombTimer;
+    private readonly ConfigManager _config;
     private bool _disposed;
 
-    private Program()
+    private Program(ConfigManager config)
     {
+        _config = config ?? throw new ArgumentNullException(nameof(config));
         Offsets.UpdateOffsets().GetAwaiter().GetResult();
-
-        var features = ConfigManager.Load();
 
         _gameProcess = new GameProcess();
         _gameProcess.Start();
@@ -35,23 +36,23 @@ public sealed class Program : IDisposable
         _inputHandler = new UserInputHandler();
 
         // Передаём его в компоненты, которые нуждаются во вводе
-        _graphics = new ModernGraphics(_gameProcess, _gameData, _inputHandler);
+        _graphics = new ModernGraphics(_gameProcess, _gameData, _inputHandler, _config);
         _graphics.Start();
 
         _triggerBot = new TriggerBot(_gameProcess, _gameData, _inputHandler);
-        if (features.TriggerBot)
+        if (_config.TriggerBot)
         {
             _triggerBot.Start();
         }
 
         _aimBot = new AimBot(_gameProcess, _gameData, _inputHandler); // ← передаём inputHandler
-        if (features.AimBot)
+        if (_config.AimBot)
         {
             _aimBot.Start();
         }
 
         _bombTimer = new BombTimer(_graphics);
-        if (features.BombTimer)
+        if (_config.BombTimer)
         {
             _bombTimer.Start();
         }
@@ -61,22 +62,60 @@ public sealed class Program : IDisposable
     {
         User32.TryEnablePerMonitorDpiAwareness();
 
-        using var program = new Program();
+        var config = ConfigManager.Load();
+        using var program = new Program(config);
 
-        Console.WriteLine("CS2 helper started. Press 'q' to quit.");
-        while (true)
+        Console.WriteLine("CS2GameHelper started!");
+        Console.WriteLine("Controls:");
+        if (config.MenuToggleKey == Keys.None)
         {
-            if (Console.KeyAvailable)
+            Console.WriteLine("  Menu hotkey is disabled");
+        }
+        else
+        {
+            Console.WriteLine($"  {OverlayMenu.FormatKey(config.MenuToggleKey)} - Toggle settings menu");
+        }
+        Console.WriteLine("  F11 - Toggle overlay visibility");
+        Console.WriteLine("  Alt+Z - Temporarily hide overlay");
+        Console.WriteLine("  Close this window to exit");
+        Console.WriteLine();
+
+        // Create a simple message loop instead of blocking on console input
+        var running = true;
+        Thread consoleThread = new Thread(() =>
+        {
+            try
             {
-                var key = Console.ReadKey(true).Key;
-                if (key == ConsoleKey.Q)
+                while (running)
                 {
-                    break;
+                    if (Console.KeyAvailable)
+                    {
+                        var key = Console.ReadKey(true).Key;
+                        if (key == ConsoleKey.Q || key == ConsoleKey.Escape)
+                        {
+                            running = false;
+                            break;
+                        }
+                    }
+                    Thread.Sleep(100);
                 }
             }
+            catch
+            {
+                // Console might not be available in some scenarios
+            }
+        });
+        
+        consoleThread.IsBackground = true;
+        consoleThread.Start();
 
-            Thread.Sleep(100);
+        // Main application loop
+        while (running)
+        {
+            Thread.Sleep(50);
         }
+
+        Console.WriteLine("Shutting down...");
     }
 
     public void Dispose()

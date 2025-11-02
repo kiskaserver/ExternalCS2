@@ -15,6 +15,7 @@ public class ConfigManager
     public bool TriggerBot { get; set; } = true;
     public Keys AimBotKey { get; set; } = Keys.LButton;
     public Keys TriggerBotKey { get; set; } = Keys.LMenu;
+    public Keys MenuToggleKey { get; set; } = Keys.Insert;
     public bool TeamCheck { get; set; } = true;
     public bool AimBotAutoShoot { get; set; } = true;
 
@@ -173,6 +174,7 @@ public class ConfigManager
             TriggerBot = true,
             AimBotKey = Keys.LButton,
             TriggerBotKey = Keys.LMenu,
+            MenuToggleKey = Keys.Insert,
             TeamCheck = true,
 
             Esp = new EspConfig

@@ -6,6 +6,7 @@
   "triggerBot": true,
   "aimBotKey": 1,
   "triggerBotKey": 164,
+  "menuToggleKey": 45,
   "teamCheck": true,
   "esp": {
     "box": {

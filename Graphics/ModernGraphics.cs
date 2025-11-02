@@ -35,10 +35,11 @@ public class ModernGraphics : ThreadedServiceBase
 
     private readonly FpsCounter _fpsCounter = new();
     private readonly object _renderLock = new();
-    private volatile ConfigManager _config = ConfigManager.Load(); // Кэшируем конфиг
+    private readonly ConfigManager _config;
     private bool _overlayVisible = true;
     private bool _lastF11 = false;
     private DateTime _autoHideUntil = DateTime.MinValue;
+    private OverlayMenu? _overlayMenu;
 
     // Window styles
     private const int GWL_EXSTYLE = -20;
@@ -56,11 +57,15 @@ public class ModernGraphics : ThreadedServiceBase
     private static readonly IntPtr HWND_TOPMOST = new(-1);
     private static readonly IntPtr HWND_NOTOPMOST = new(-2);
 
-    public ModernGraphics(GameProcess gameProcess, GameData gameData, UserInputHandler inputHandler)
+    public ModernGraphics(GameProcess gameProcess, GameData gameData, UserInputHandler inputHandler, ConfigManager config)
     {
         _gameProcess = gameProcess ?? throw new ArgumentNullException(nameof(gameProcess));
         _gameData = gameData ?? throw new ArgumentNullException(nameof(gameData));
         _inputHandler = inputHandler ?? throw new ArgumentNullException(nameof(inputHandler));
+        _config = config ?? throw new ArgumentNullException(nameof(config));
+        
+        // Инициализируем меню
+        _overlayMenu = new OverlayMenu(_inputHandler, this, _config);
     }
 
     protected override string ThreadName => nameof(ModernGraphics);
@@ -268,6 +273,10 @@ public class ModernGraphics : ThreadedServiceBase
     public void DrawLine(uint color, Vector2 start, Vector2 end) => AddLine(start, end, ConvertColor(color));
     public void DrawRect(float x, float y, float w, float h, uint color) => AddRectangle(new(x, y), new(x + w, y + h), ConvertColor(color), true);
     public void DrawRectOutline(float x, float y, float w, float h, uint color) => AddRectangle(new(x, y), new(x + w, y + h), ConvertColor(color), false);
+    public void DrawRectangle(uint color, Vector2 topLeft, float width, float height, bool filled = true) =>
+        AddRectangle(topLeft, new Vector2(topLeft.X + width, topLeft.Y + height), ConvertColor(color), filled);
+    public void DrawRectangleOutline(uint color, Vector2 topLeft, float width, float height) =>
+        DrawRectangle(color, topLeft, width, height, false);
     public void DrawText(string text, float x, float y, uint color, float fontSize = 12, bool useCustomFont = false) => AddText(text, x, y, ConvertColor(color), fontSize, useCustomFont);
     public void DrawCircle(float cx, float cy, float radius, uint color) => AddCircle(cx, cy, radius, ConvertColor(color), DrawCommandType.Circle);
     public void DrawCircleOutline(float cx, float cy, float radius, uint color) => AddCircle(cx, cy, radius, ConvertColor(color), DrawCommandType.CircleOutline);
@@ -446,6 +455,9 @@ public class ModernGraphics : ThreadedServiceBase
             SetOverlayVisible(_overlayVisible);
         }
         _lastF11 = f11Down;
+        
+        // Обновляем меню
+        _overlayMenu?.Update();
 
         var altDown = _inputHandler.IsKeyDown(Keys.Menu);
         var zDown = _inputHandler.IsKeyDown(Keys.Z);
@@ -516,7 +528,8 @@ public class ModernGraphics : ThreadedServiceBase
                 if (config.SkeletonEsp) SkeletonEsp.Draw(this);
                 if (config.BombTimer) BombTimer.Draw(this);
                 if (config.SpectatorList.Enabled) SpectatorList.Draw(this);
-                if (config.HitSound.Enabled) {
+                if (config.HitSound.Enabled)
+                {
                     HitSound.Process(this);
                     HitSound.DrawHitTexts(this);
                 }
@@ -536,8 +549,23 @@ public class ModernGraphics : ThreadedServiceBase
 
             var status = _overlayVisible ? "Overlay: ON" : "Overlay: OFF";
             if (_autoHideUntil > DateTime.UtcNow)
+            {
                 status += $" (auto-hide {(int)Math.Max(0, (_autoHideUntil - DateTime.UtcNow).TotalMilliseconds)} ms)";
+            }
             AddHudText(status, 5, 110, SKColors.Yellow, 12);
+
+            if (_overlayMenu != null)
+            {
+                if (_overlayMenu.MenuToggleKey == Keys.None)
+                {
+                    AddHudText("Menu hotkey disabled", 5, 125, SKColors.Cyan, 12);
+                }
+                else
+                {
+                    AddHudText($"Press {_overlayMenu.MenuToggleKeyLabel} for menu", 5, 125, SKColors.Cyan, 12);
+                }
+                _overlayMenu.Render();
+            }
         }
     }
 
@@ -546,6 +574,7 @@ public class ModernGraphics : ThreadedServiceBase
 
     public override void Dispose()
     {
+        _overlayMenu?.Dispose();
         base.Dispose();
         _paint?.Dispose();
         _surface?.Dispose();
