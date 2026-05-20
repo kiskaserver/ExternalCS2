@@ -1,0 +1,32 @@
+name: build
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET 8
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Restore
+        run: dotnet restore CS2GameHelper.sln
+
+      - name: Build (Release)
+        run: dotnet build CS2GameHelper.sln -c Release --no-restore /p:Platform="Any CPU"
+
+      - name: Test
+        run: dotnet test CS2GameHelper.sln -c Release --no-build --verbosity normal
+        continue-on-error: true

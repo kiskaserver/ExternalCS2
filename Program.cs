@@ -18,6 +18,7 @@ public sealed class Program : IDisposable
     private readonly TriggerBot _triggerBot;
     private readonly AimBot _aimBot;
     private readonly BombTimer _bombTimer;
+    private readonly VoteTeller _voteTeller;
     private readonly ConfigManager _config;
     private bool _disposed;
 
@@ -55,6 +56,12 @@ public sealed class Program : IDisposable
         if (_config.BombTimer)
         {
             _bombTimer.Start();
+        }
+
+        _voteTeller = new VoteTeller(_gameProcess);
+        if (_config.VoteTeller.Enabled)
+        {
+            _voteTeller.Start();
         }
     }
 
@@ -131,6 +138,7 @@ public sealed class Program : IDisposable
         if (disposing)
         {
             // ВАЖНО: Dispose в обратном порядке создания
+            _voteTeller?.Dispose();
             _bombTimer?.Dispose();
             _aimBot?.Dispose();
             _triggerBot?.Dispose();

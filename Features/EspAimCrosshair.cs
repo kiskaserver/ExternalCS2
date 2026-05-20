@@ -41,6 +41,15 @@ public static class EspAimCrosshair
 
         var pointScreen = GetPositionScreen(graphics.GameProcess, player, aimCfg.RecoilScale);
         Draw(graphics, new Vector2(pointScreen.X, pointScreen.Y), aimCfg);
+
+        // v2.0: FOV circle around screen center
+        if (aimCfg.ShowFovCircle && aimCfg.FovCircleRadius > 0)
+        {
+            var screen = graphics.GameProcess.WindowRectangleClient.Size;
+            var cx = screen.Width * 0.5f;
+            var cy = screen.Height * 0.5f;
+            graphics.DrawCircleOutline(cx, cy, aimCfg.FovCircleRadius, ParseColorHex(aimCfg.FovCircleColor));
+        }
     }
 
     private static void Draw(ModernGraphics graphics, Vector2 pointScreen, ConfigManager.EspConfig.AimCrosshairConfig aimCfg)

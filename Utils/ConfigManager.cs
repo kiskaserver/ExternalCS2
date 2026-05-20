@@ -69,7 +69,29 @@ public class ConfigManager
             public string Color { get; set; } = "FFFFFFFF";
             // Recoil scale multiplier applied to punch angles
             public float RecoilScale { get; set; } = 2f;
+
+            // ---- v2.0: FOV Circle ----
+            // Draws a circle around the screen center representing the aim FOV radius.
+            public bool ShowFovCircle { get; set; } = false;
+            // Radius in pixels (screen-space). Independent of game FOV for simplicity & predictability.
+            public int FovCircleRadius { get; set; } = 120;
+            // ARGB hex
+            public string FovCircleColor { get; set; } = "80FFFFFF";
         }
+    }
+
+    // v2.0: Vote Teller
+    public VoteTellerConfig VoteTeller { get; set; } = new();
+
+    public class VoteTellerConfig
+    {
+        public bool Enabled { get; set; } = true;
+        // ARGB hex strings
+        public string ColorT { get; set; } = "FFFF8C00";   // OrangeRed-ish
+        public string ColorCT { get; set; } = "FF00BFFF";  // DeepSkyBlue
+        public string ColorAll { get; set; } = "FFFFFFFF";
+        public int X { get; set; } = 10;
+        public int Y { get; set; } = 350;
     }
 
     // Spectator list settings
@@ -130,6 +152,7 @@ public class ConfigManager
             config.Esp.AimCrosshair ??= new EspConfig.AimCrosshairConfig();
             config.SpectatorList ??= new SpectatorListConfig();
             config.HitSound ??= new HitSoundConfig();
+            config.VoteTeller ??= new VoteTellerConfig();
 
             return config;
         }
@@ -139,6 +162,120 @@ public class ConfigManager
             Save(fallback);
             return fallback;
         }
+    }
+
+    /// <summary>v2.0: reload config from disk and copy values into this instance. Returns true on success.</summary>
+    public bool ReloadInPlace()
+    {
+        try
+        {
+            var fresh = Load();
+            CopyFrom(fresh);
+            return true;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    /// <summary>v2.0: reset all values to defaults and persist.</summary>
+    public bool ResetDefaults()
+    {
+        try
+        {
+            var def = Default();
+            CopyFrom(def);
+            Save(this);
+            return true;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    /// <summary>v2.0: save self to disk.</summary>
+    public bool SaveCurrent()
+    {
+        try { Save(this); return true; } catch { return false; }
+    }
+
+    private void CopyFrom(ConfigManager other)
+    {
+        AimBot = other.AimBot;
+        AimBotAutoShoot = other.AimBotAutoShoot;
+        BombTimer = other.BombTimer;
+        SkeletonEsp = other.SkeletonEsp;
+        TriggerBot = other.TriggerBot;
+        AimBotKey = other.AimBotKey;
+        TriggerBotKey = other.TriggerBotKey;
+        MenuToggleKey = other.MenuToggleKey;
+        TeamCheck = other.TeamCheck;
+
+        Esp ??= new EspConfig();
+        Esp.Box ??= new EspConfig.BoxConfig();
+        Esp.Radar ??= new EspConfig.RadarConfig();
+        Esp.AimCrosshair ??= new EspConfig.AimCrosshairConfig();
+
+        // Box
+        Esp.Box.Enabled = other.Esp.Box.Enabled;
+        Esp.Box.ShowName = other.Esp.Box.ShowName;
+        Esp.Box.ShowHealthBar = other.Esp.Box.ShowHealthBar;
+        Esp.Box.ShowHealthText = other.Esp.Box.ShowHealthText;
+        Esp.Box.ShowDistance = other.Esp.Box.ShowDistance;
+        Esp.Box.ShowWeaponIcon = other.Esp.Box.ShowWeaponIcon;
+        Esp.Box.ShowArmor = other.Esp.Box.ShowArmor;
+        Esp.Box.ShowVisibilityIndicator = other.Esp.Box.ShowVisibilityIndicator;
+        Esp.Box.ShowFlags = other.Esp.Box.ShowFlags;
+        Esp.Box.EnemyColor = other.Esp.Box.EnemyColor;
+        Esp.Box.TeamColor = other.Esp.Box.TeamColor;
+        Esp.Box.VisibleAlpha = other.Esp.Box.VisibleAlpha;
+        Esp.Box.InvisibleAlpha = other.Esp.Box.InvisibleAlpha;
+
+        // Radar
+        Esp.Radar.Enabled = other.Esp.Radar.Enabled;
+        Esp.Radar.Size = other.Esp.Radar.Size;
+        Esp.Radar.X = other.Esp.Radar.X;
+        Esp.Radar.Y = other.Esp.Radar.Y;
+        Esp.Radar.MaxDistance = other.Esp.Radar.MaxDistance;
+        Esp.Radar.ShowLocalPlayer = other.Esp.Radar.ShowLocalPlayer;
+        Esp.Radar.ShowDirectionArrow = other.Esp.Radar.ShowDirectionArrow;
+        Esp.Radar.EnemyColor = other.Esp.Radar.EnemyColor;
+        Esp.Radar.TeamColor = other.Esp.Radar.TeamColor;
+        Esp.Radar.VisibleAlpha = other.Esp.Radar.VisibleAlpha;
+        Esp.Radar.InvisibleAlpha = other.Esp.Radar.InvisibleAlpha;
+
+        // AimCrosshair + FovCircle
+        Esp.AimCrosshair.Enabled = other.Esp.AimCrosshair.Enabled;
+        Esp.AimCrosshair.Radius = other.Esp.AimCrosshair.Radius;
+        Esp.AimCrosshair.Color = other.Esp.AimCrosshair.Color;
+        Esp.AimCrosshair.RecoilScale = other.Esp.AimCrosshair.RecoilScale;
+        Esp.AimCrosshair.ShowFovCircle = other.Esp.AimCrosshair.ShowFovCircle;
+        Esp.AimCrosshair.FovCircleRadius = other.Esp.AimCrosshair.FovCircleRadius;
+        Esp.AimCrosshair.FovCircleColor = other.Esp.AimCrosshair.FovCircleColor;
+
+        SpectatorList ??= new SpectatorListConfig();
+        SpectatorList.Enabled = other.SpectatorList.Enabled;
+
+        HitSound ??= new HitSoundConfig();
+        HitSound.Enabled = other.HitSound.Enabled;
+        HitSound.HitColor = other.HitSound.HitColor;
+        HitSound.HeadshotColor = other.HitSound.HeadshotColor;
+        HitSound.HitText = other.HitSound.HitText;
+        HitSound.HeadshotText = other.HitSound.HeadshotText;
+        HitSound.HitSoundFile = other.HitSound.HitSoundFile;
+        HitSound.HeadshotSoundFile = other.HitSound.HeadshotSoundFile;
+        HitSound.HeadshotDamageThreshold = other.HitSound.HeadshotDamageThreshold;
+        HitSound.TextDurationSeconds = other.HitSound.TextDurationSeconds;
+
+        VoteTeller ??= new VoteTellerConfig();
+        VoteTeller.Enabled = other.VoteTeller.Enabled;
+        VoteTeller.ColorT = other.VoteTeller.ColorT;
+        VoteTeller.ColorCT = other.VoteTeller.ColorCT;
+        VoteTeller.ColorAll = other.VoteTeller.ColorAll;
+        VoteTeller.X = other.VoteTeller.X;
+        VoteTeller.Y = other.VoteTeller.Y;
     }
 
     public static void Save(ConfigManager options)

@@ -527,6 +527,7 @@ public class ModernGraphics : ThreadedServiceBase
                 }
                 if (config.SkeletonEsp) SkeletonEsp.Draw(this);
                 if (config.BombTimer) BombTimer.Draw(this);
+                if (config.VoteTeller?.Enabled == true) VoteTeller.Draw(this);
                 if (config.SpectatorList.Enabled) SpectatorList.Draw(this);
                 if (config.HitSound.Enabled)
                 {

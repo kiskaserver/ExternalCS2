@@ -1,0 +1,73 @@
+name: release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag to release (e.g. v2.0.0)'
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: windows-latest
+    timeout-minutes: 45
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET 8
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Determine version
+        id: ver
+        shell: pwsh
+        run: |
+          $ref = "${{ github.ref }}"
+          if ($ref -like "refs/tags/*") {
+            $tag = $ref -replace 'refs/tags/', ''
+          } else {
+            $tag = "${{ github.event.inputs.tag }}"
+          }
+          $version = $tag -replace '^v', ''
+          echo "tag=$tag"         >> $env:GITHUB_OUTPUT
+          echo "version=$version" >> $env:GITHUB_OUTPUT
+
+      - name: Restore
+        run: dotnet restore CS2GameHelper.csproj
+
+      - name: Publish (win-x64, self-contained)
+        run: >
+          dotnet publish CS2GameHelper.csproj
+          -c Release
+          -r win-x64
+          --self-contained true
+          /p:PublishSingleFile=false
+          /p:IncludeNativeLibrariesForSelfExtract=true
+          /p:Version=${{ steps.ver.outputs.version }}
+          -o publish/win-x64
+
+      - name: Zip artifact
+        shell: pwsh
+        run: |
+          $tag = "${{ steps.ver.outputs.tag }}"
+          Compress-Archive -Path "publish/win-x64/*" -DestinationPath "CS2GameHelper-$tag-win-x64.zip" -Force
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.ver.outputs.tag }}
+          name: CS2GameHelper ${{ steps.ver.outputs.tag }}
+          generate_release_notes: true
+          files: |
+            CS2GameHelper-${{ steps.ver.outputs.tag }}-win-x64.zip
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

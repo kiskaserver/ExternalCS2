@@ -68,6 +68,15 @@ It is intended as a research and learning platform for exploring game internals,
 
 This project was **originally forked from `CS2External` by sweeperxz** but has been **extensively rewritten**, with AimBot and ESP modules implemented from the ground up with new architecture and advanced features.
 
+### What's new in v2.0
+
+- **Vote Teller** — overlay panel showing the active in-game vote (team, issue ID, Yes/No tallies), team-colored.
+- **FOV Circle** — optional dynamic circle around the crosshair visualising the aim cone (toggle + adjustable radius in the menu).
+- **Config Save / Reload / Reset Defaults** — three new action items in the overlay menu's *General* tab; changes apply in place without restarting the app.
+- **CI/CD** — GitHub Actions workflows: `build.yml` runs Release builds + tests on every push/PR; `release.yml` publishes a self-contained `win-x64` zip to GitHub Releases on every `v*` tag.
+- Default overlay menu toggle key remains `Insert`; aim/trigger keys remain `LButton` / `LAlt` (configurable via the in-game menu).
+
+
 > **Legal & Ethical Notice**
 > This software is provided strictly for research, educational, and local testing purposes. The authors do not condone using this software to gain unfair advantages in online multiplayer games.
 

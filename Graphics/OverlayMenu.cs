@@ -52,7 +52,10 @@ namespace CS2GameHelper.Graphics
         {
             _categories.Add(new MenuCategory("General", new List<MenuItem>
             {
-                new KeybindMenuItem("Menu Key", () => _config.MenuToggleKey, v => { _config.MenuToggleKey = v; })
+                new KeybindMenuItem("Menu Key", () => _config.MenuToggleKey, v => { _config.MenuToggleKey = v; }),
+                new ActionMenuItem("Save Config", () => _config.SaveCurrent()),
+                new ActionMenuItem("Reload Config", () => _config.ReloadInPlace()),
+                new ActionMenuItem("Reset Defaults", () => _config.ResetDefaults())
             }));
 
             _categories.Add(new MenuCategory("AimBot", new List<MenuItem>
@@ -94,7 +97,9 @@ namespace CS2GameHelper.Graphics
                 {
                     new ToggleMenuItem("Enabled", () => _config.Esp.AimCrosshair.Enabled, v => { _config.Esp.AimCrosshair.Enabled = v; }),
                     new SliderMenuItem("Radius", () => _config.Esp.AimCrosshair.Radius, v => { _config.Esp.AimCrosshair.Radius = (int)Math.Round(v); }, 1, 20, 1, "0"),
-                    new SliderMenuItem("Recoil Scale", () => _config.Esp.AimCrosshair.RecoilScale, v => { _config.Esp.AimCrosshair.RecoilScale = (float)v; }, 0.5, 5, 0.1, "0.0")
+                    new SliderMenuItem("Recoil Scale", () => _config.Esp.AimCrosshair.RecoilScale, v => { _config.Esp.AimCrosshair.RecoilScale = (float)v; }, 0.5, 5, 0.1, "0.0"),
+                    new ToggleMenuItem("FOV Circle", () => _config.Esp.AimCrosshair.ShowFovCircle, v => { _config.Esp.AimCrosshair.ShowFovCircle = v; }),
+                    new SliderMenuItem("FOV Radius", () => _config.Esp.AimCrosshair.FovCircleRadius, v => { _config.Esp.AimCrosshair.FovCircleRadius = (int)Math.Round(v); }, 20, 600, 10, "0")
                 })
             }));
             
@@ -102,7 +107,8 @@ namespace CS2GameHelper.Graphics
             {
                 new ToggleMenuItem("Skeleton ESP", () => _config.SkeletonEsp, v => { _config.SkeletonEsp = v; }),
                 new ToggleMenuItem("Bomb Timer", () => _config.BombTimer, v => { _config.BombTimer = v; }),
-                new ToggleMenuItem("Spectator List", () => _config.SpectatorList.Enabled, v => { _config.SpectatorList.Enabled = v; })
+                new ToggleMenuItem("Spectator List", () => _config.SpectatorList.Enabled, v => { _config.SpectatorList.Enabled = v; }),
+                new ToggleMenuItem("Vote Teller", () => _config.VoteTeller.Enabled, v => { _config.VoteTeller.Enabled = v; })
             }));
             
             _categories.Add(new MenuCategory("Hit Sound", new List<MenuItem>
@@ -251,6 +257,11 @@ namespace CS2GameHelper.Graphics
                 else if (currentItem is SliderMenuItem sliderItem)
                 {
                     sliderItem.Increment();
+                    _lastKeyPress = now;
+                }
+                else if (currentItem is ActionMenuItem actionItem)
+                {
+                    actionItem.Invoke();
                     _lastKeyPress = now;
                 }
             }
@@ -578,6 +589,39 @@ namespace CS2GameHelper.Graphics
         }
         
         public override string GetValue() => "→";
+    }
+
+    /// <summary>v2.0: invokes an action when selected (Save / Reload / Reset).</summary>
+    public class ActionMenuItem : MenuItem
+    {
+        private readonly Func<bool> _action;
+        private string _lastStatus = string.Empty;
+        private DateTime _statusUntil = DateTime.MinValue;
+
+        public ActionMenuItem(string name, Func<bool> action) : base(name)
+        {
+            _action = action;
+        }
+
+        public void Invoke()
+        {
+            try
+            {
+                var ok = _action();
+                _lastStatus = ok ? "OK" : "FAIL";
+            }
+            catch
+            {
+                _lastStatus = "ERR";
+            }
+            _statusUntil = DateTime.Now.AddSeconds(2);
+        }
+
+        public override string GetValue()
+        {
+            if (DateTime.Now < _statusUntil) return _lastStatus;
+            return "▶";
+        }
     }
     
     public class MenuCategory
