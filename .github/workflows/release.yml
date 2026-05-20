@@ -16,7 +16,7 @@ permissions:
 jobs:
   release:
     runs-on: windows-latest
-    timeout-minutes: 45
+    timeout-minutes: 90
 
     steps:
       - name: Checkout
@@ -41,25 +41,74 @@ jobs:
           echo "tag=$tag"         >> $env:GITHUB_OUTPUT
           echo "version=$version" >> $env:GITHUB_OUTPUT
 
-      - name: Restore
-        run: dotnet restore CS2GameHelper.csproj
-
-      - name: Publish (win-x64, self-contained)
+      # ───────────────────────────── CPU build ─────────────────────────────
+      - name: Publish CPU (win-x64, self-contained)
         run: >
           dotnet publish CS2GameHelper.csproj
           -c Release
           -r win-x64
           --self-contained true
-          /p:PublishSingleFile=false
+          /p:UseCuda=false
           /p:IncludeNativeLibrariesForSelfExtract=true
           /p:Version=${{ steps.ver.outputs.version }}
-          -o publish/win-x64
+          -o publish/cpu
 
-      - name: Zip artifact
+      - name: Zip CPU build
         shell: pwsh
         run: |
           $tag = "${{ steps.ver.outputs.tag }}"
-          Compress-Archive -Path "publish/win-x64/*" -DestinationPath "CS2GameHelper-$tag-win-x64.zip" -Force
+          Compress-Archive -Path "publish/cpu/*" `
+                           -DestinationPath "CS2GameHelper-$tag-win-x64-cpu.zip" `
+                           -Force
+          $size = (Get-Item "CS2GameHelper-$tag-win-x64-cpu.zip").Length / 1MB
+          Write-Host ("CPU zip size: {0:N1} MB" -f $size)
+
+      # ───────────────────────────── CUDA build ────────────────────────────
+      - name: Clean obj/bin between builds
+        shell: pwsh
+        run: |
+          Remove-Item -Recurse -Force bin, obj -ErrorAction SilentlyContinue
+          Write-Host "Workspace cleaned for CUDA build"
+
+      - name: Publish CUDA (win-x64, self-contained)
+        run: >
+          dotnet publish CS2GameHelper.csproj
+          -c Release
+          -r win-x64
+          --self-contained true
+          /p:UseCuda=true
+          /p:IncludeNativeLibrariesForSelfExtract=true
+          /p:Version=${{ steps.ver.outputs.version }}
+          -o publish/cuda
+
+      # GitHub release-asset limit is 2 GiB per file. libtorch_cuda DLLs make
+      # the archive 4-6 GB, so split with 7-Zip into <2 GB volumes (1900 MiB).
+      - name: Pack CUDA build (7z multi-volume, 1900 MiB each)
+        shell: pwsh
+        run: |
+          $tag    = "${{ steps.ver.outputs.tag }}"
+          $base   = "CS2GameHelper-$tag-win-x64-cuda"
+          $sevenZ = "C:\Program Files\7-Zip\7z.exe"
+          if (-not (Test-Path $sevenZ)) { throw "7-Zip not found on runner at $sevenZ" }
+
+          # -mx=5 normal compression, -v1900m split into 1900 MiB volumes
+          & $sevenZ a -tzip -mx=5 -v1900m "$base.zip" "publish/cuda/*"
+          if ($LASTEXITCODE -ne 0) { throw "7z failed with exit $LASTEXITCODE" }
+
+          # SHA-256 manifest so users can verify rejoined archive.
+          $parts = Get-ChildItem -File -Filter "$base.zip*" | Sort-Object Name
+          $manifest = foreach ($p in $parts) {
+            $h = Get-FileHash -Algorithm SHA256 $p.FullName
+            "{0}  {1}  ({2:N1} MB)" -f $h.Hash, $p.Name, ($p.Length/1MB)
+          }
+          $manifest | Set-Content -Path "$base.SHA256.txt" -Encoding ASCII
+          Get-Content "$base.SHA256.txt" | Write-Host
+
+      - name: List release artifacts
+        shell: pwsh
+        run: |
+          Get-ChildItem -File CS2GameHelper-*.zip*, CS2GameHelper-*.SHA256.txt |
+            Format-Table Name, @{N='SizeMB';E={'{0:N1}' -f ($_.Length/1MB)}}
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
@@ -67,7 +116,26 @@ jobs:
           tag_name: ${{ steps.ver.outputs.tag }}
           name: CS2GameHelper ${{ steps.ver.outputs.tag }}
           generate_release_notes: true
+          body: |
+            ## Downloads
+
+            - **CPU build** — `CS2GameHelper-${{ steps.ver.outputs.tag }}-win-x64-cpu.zip` — single archive, runs on any x64 Windows.
+            - **CUDA (GPU) build** — `CS2GameHelper-${{ steps.ver.outputs.tag }}-win-x64-cuda.zip.001 .. .NNN` — multi-volume 7-Zip archive (≤1900 MiB per part) because GitHub limits single release assets to 2 GiB. Requires an NVIDIA GPU with CUDA support.
+
+            ### Rejoining the CUDA parts
+
+            Download **all** `.zip.001`, `.zip.002`, … files into the same folder, then extract:
+
+            - **7-Zip GUI**: right-click `*.zip.001` → 7-Zip → Extract Here.
+            - **PowerShell**:
+              ```powershell
+              & "C:\Program Files\7-Zip\7z.exe" x "CS2GameHelper-${{ steps.ver.outputs.tag }}-win-x64-cuda.zip.001"
+              ```
+
+            SHA-256 hashes for verification are in `CS2GameHelper-${{ steps.ver.outputs.tag }}-win-x64-cuda.SHA256.txt`.
           files: |
-            CS2GameHelper-${{ steps.ver.outputs.tag }}-win-x64.zip
+            CS2GameHelper-${{ steps.ver.outputs.tag }}-win-x64-cpu.zip
+            CS2GameHelper-${{ steps.ver.outputs.tag }}-win-x64-cuda.zip.*
+            CS2GameHelper-${{ steps.ver.outputs.tag }}-win-x64-cuda.SHA256.txt
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

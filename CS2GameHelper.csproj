@@ -36,14 +36,13 @@
         <PackageReference Include="System.Numerics.Vectors" Version="4.5.0"/>
         <PackageReference Include="SkiaSharp" Version="2.88.8"/>
         <PackageReference Include="System.Drawing.Common" Version="8.0.8"/>
-        <PackageReference Include="TorchSharp-cuda-windows" Version="0.105.1" />
         <!--
-            If you don't have a CUDA-capable GPU or prefer CPU-only training/execution,
-            replace the CUDA package above with the CPU package below. Training will
-            run on the CPU and will be noticeably slower but more portable.
-
-            <PackageReference Include="TorchSharp-cpu" Version="0.105.1" />
+            TorchSharp backend selection. Default is CUDA (Windows GPU build).
+            Override via MSBuild:  /p:UseCuda=false  to produce a CPU-only build.
+            The two packages are mutually exclusive — keep exactly one resolved.
         -->
+        <PackageReference Include="TorchSharp-cuda-windows" Version="0.105.1" Condition="'$(UseCuda)' != 'false'" />
+        <PackageReference Include="TorchSharp-cpu"          Version="0.105.1" Condition="'$(UseCuda)' == 'false'" />
         <!-- Test helpers (added to main project to ensure test packages are available during CI/build) -->
         <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.0.0" PrivateAssets="all" />
         <PackageReference Include="xunit" Version="2.5.3" PrivateAssets="all" />
