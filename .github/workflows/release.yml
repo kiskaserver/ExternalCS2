@@ -136,7 +136,7 @@ jobs:
           </Obfuscator>'
 
       - name: Obfuscate CPU build
-        run: obfuscar obfuscar_cpu.xml
+        run: obfuscar.console obfuscar_cpu.xml
 
       - name: Copy dependencies for Obfuscated build
         shell: pwsh
