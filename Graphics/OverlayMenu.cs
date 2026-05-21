@@ -78,7 +78,8 @@ namespace CS2GameHelper.Graphics
                 {
                     new ToggleMenuItem("Enabled", () => _config.Esp.Box.Enabled, v => { _config.Esp.Box.Enabled = v; }),
                     new ToggleMenuItem("Show Name", () => _config.Esp.Box.ShowName, v => { _config.Esp.Box.ShowName = v; }),
-                    new ToggleMenuItem("Show Health", () => _config.Esp.Box.ShowHealthBar, v => { _config.Esp.Box.ShowHealthBar = v; }),
+                    new ToggleMenuItem("Show Health Bar", () => _config.Esp.Box.ShowHealthBar, v => { _config.Esp.Box.ShowHealthBar = v; }),
+                    new ToggleMenuItem("Show Health Text", () => _config.Esp.Box.ShowHealthText, v => { _config.Esp.Box.ShowHealthText = v; }),
                     new ToggleMenuItem("Show Distance", () => _config.Esp.Box.ShowDistance, v => { _config.Esp.Box.ShowDistance = v; }),
                     new ToggleMenuItem("Show Weapon", () => _config.Esp.Box.ShowWeaponIcon, v => { _config.Esp.Box.ShowWeaponIcon = v; }),
                     new ToggleMenuItem("Show Armor", () => _config.Esp.Box.ShowArmor, v => { _config.Esp.Box.ShowArmor = v; }),
@@ -88,6 +89,8 @@ namespace CS2GameHelper.Graphics
                 new SubMenuItem("Radar", new List<MenuItem>
                 {
                     new ToggleMenuItem("Enabled", () => _config.Esp.Radar.Enabled, v => { _config.Esp.Radar.Enabled = v; }),
+                    new ToggleMenuItem("Show Local Player", () => _config.Esp.Radar.ShowLocalPlayer, v => { _config.Esp.Radar.ShowLocalPlayer = v; }),
+                    new ToggleMenuItem("Show Direction Arrow", () => _config.Esp.Radar.ShowDirectionArrow, v => { _config.Esp.Radar.ShowDirectionArrow = v; }),
                     new SliderMenuItem("Size", () => _config.Esp.Radar.Size, v => { _config.Esp.Radar.Size = (int)Math.Round(v); }, 50, 300, 5),
                     new SliderMenuItem("X Position", () => _config.Esp.Radar.X, v => { _config.Esp.Radar.X = (int)Math.Round(v); }, 0, 500, 5),
                     new SliderMenuItem("Y Position", () => _config.Esp.Radar.Y, v => { _config.Esp.Radar.Y = (int)Math.Round(v); }, 0, 500, 5),
@@ -108,7 +111,12 @@ namespace CS2GameHelper.Graphics
                 new ToggleMenuItem("Skeleton ESP", () => _config.SkeletonEsp, v => { _config.SkeletonEsp = v; }),
                 new ToggleMenuItem("Bomb Timer", () => _config.BombTimer, v => { _config.BombTimer = v; }),
                 new ToggleMenuItem("Spectator List", () => _config.SpectatorList.Enabled, v => { _config.SpectatorList.Enabled = v; }),
-                new ToggleMenuItem("Vote Teller", () => _config.VoteTeller.Enabled, v => { _config.VoteTeller.Enabled = v; })
+                new SubMenuItem("Vote Teller", new List<MenuItem>
+                {
+                    new ToggleMenuItem("Enabled", () => _config.VoteTeller.Enabled, v => { _config.VoteTeller.Enabled = v; }),
+                    new SliderMenuItem("X Position", () => _config.VoteTeller.X, v => { _config.VoteTeller.X = (int)Math.Round(v); }, 0, 1920, 5),
+                    new SliderMenuItem("Y Position", () => _config.VoteTeller.Y, v => { _config.VoteTeller.Y = (int)Math.Round(v); }, 0, 1080, 5)
+                })
             }));
             
             _categories.Add(new MenuCategory("Hit Sound", new List<MenuItem>

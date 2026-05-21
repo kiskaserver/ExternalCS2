@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Obfuscator>
+  <Var name="InPath" value="publish/cpu" />
+  <Var name="OutPath" value="publish/cpu_obf" />
+  <Var name="KeepPublicApi" value="false" />
+  <Var name="HidePrivateApi" value="true" />
+  <Var name="HideStrings" value="true" />
+  <Var name="OptimizeMethods" value="true" />
+  <Var name="SuppressIldasm" value="true" />
+  <Var name="KeyFile" value="" />
+  
+  <Module file="$(InPath)\CS2GameHelper.dll" />
+
+</Obfuscator>

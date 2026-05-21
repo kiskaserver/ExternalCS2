@@ -13,6 +13,15 @@ namespace CS2GameHelper.Core
 {
     public record TrainingDataPoint(float[] Input, float[] Output);
 
+    // System.Text.Json cannot (de)serialize ValueTuple by member name, so we
+    // need an explicit DTO for the normalization statistics persisted on disk.
+    public sealed class NormalizationStats
+    {
+        public int InputDim { get; set; } = NeuralAimProvider.InputDim;
+        public float[] Mean { get; set; } = new float[NeuralAimProvider.InputDim];
+        public float[] Std { get; set; } = Enumerable.Repeat(1f, NeuralAimProvider.InputDim).ToArray();
+    }
+
     public class NeuralAimNetwork : Module<Tensor, Tensor>
     {
         private readonly Module<Tensor, Tensor> _layer1;
@@ -21,8 +30,9 @@ namespace CS2GameHelper.Core
 
         public NeuralAimNetwork() : base(nameof(NeuralAimNetwork))
         {
-            // Вход: [dx, dy, dz, distance, velX, velY, velZ] → 7 фич
-            _layer1 = Linear(7, 64);
+            // Вход (10 фич): [dx, dy, dz, distance, velX, velY, velZ,
+            //                deltaTimeMs, aimSpeed, targetAccelMag]
+            _layer1 = Linear(NeuralAimProvider.InputDim, 64);
             _layer2 = Linear(64, 64);
             _outputLayer = Linear(64, 2);
             RegisterComponents();
@@ -39,30 +49,51 @@ namespace CS2GameHelper.Core
 
     public class NeuralAimProvider : IAimCorrectionProvider, IDisposable
     {
+        public const int InputDim = 10;
         private const int MaxTrainingDataSize = 2000;
         private const int TrainingBatchSize = 64;
+        private const int PendingWindowMs = 600;
+        private const int HitMatchWindowMs = 250;
+        private const int MaxPendingSize = 64;
         private const string ModelFileName = "neural_aim.pth";
         private const string StatsFileName = "neural_stats.json";
 
         private readonly string _modelPath;
         private readonly string _statsPath;
         private readonly ConcurrentQueue<TrainingDataPoint> _trainingDataQueue = new();
+        private readonly ConcurrentQueue<(DateTime When, TrainingDataPoint Point)> _pendingObservations = new();
         private readonly Thread _trainingThread;
         private readonly ManualResetEventSlim _trainingSignal = new(false);
         private readonly object _networkLock = new object();
+        private readonly torch.Device _device;
 
         private NeuralAimNetwork? _network;
         private torch.optim.Optimizer? _optimizer;
         private volatile bool _isDisposed;
 
-        // Нормализация
-        private float[] _inputMean = new float[7];
-        private float[] _inputStd = new float[7] { 1, 1, 1, 1, 1, 1, 1 };
+        // Нормализация. Эти массивы ЧИТАЮТСЯ из inference-потока без блокировки
+        // и ПИШУТСЯ из тренировочного под _networkLock. Чтобы избежать гонки
+        // при частичном обновлении элементов, мы всегда АТОМАРНО подменяем
+        // весь массив (Volatile.Write + Volatile.Read).
+        private float[] _inputMean = new float[InputDim];
+        private float[] _inputStd = Enumerable.Repeat(1f, InputDim).ToArray();
 
         public NeuralAimProvider()
         {
             _modelPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, ModelFileName);
             _statsPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, StatsFileName);
+
+            // CUDA если доступна в этой сборке TorchSharp (при -p:UseCuda=true).
+            try
+            {
+                _device = torch.cuda.is_available() ? CUDA : CPU;
+            }
+            catch
+            {
+                _device = CPU;
+            }
+            Console.WriteLine($"[NeuralAim] Device: {_device}");
+
             LoadStats();
             InitNetwork();
             _trainingThread = new Thread(TrainingLoop) { IsBackground = true, Priority = ThreadPriority.BelowNormal };
@@ -71,17 +102,25 @@ namespace CS2GameHelper.Core
 
         private void InitNetwork()
         {
-            if (File.Exists(_modelPath))
+            try
             {
                 _network = new NeuralAimNetwork();
-                _network.load(_modelPath);
-                _network.eval();
+                if (File.Exists(_modelPath))
+                {
+                    _network.load(_modelPath);
+                    _network.eval();
+                }
             }
-            else
+            catch (Exception ex)
             {
+                // Несовпадение размерностей (напр. старый 7-вход vs новый 10) или битый файл
+                // — стартуем с чистой сети вместо краша.
+                Console.WriteLine($"[NeuralAim] Failed to load model, starting fresh: {ex.Message}");
+                _network?.Dispose();
                 _network = new NeuralAimNetwork();
             }
 
+            _network.to(_device);
             _optimizer = torch.optim.Adam(_network.parameters(), lr: 0.001);
             Console.WriteLine("[NeuralAim] Initialized.");
         }
@@ -92,11 +131,15 @@ namespace CS2GameHelper.Core
             try
             {
                 var json = File.ReadAllText(_statsPath);
-                var stats = JsonSerializer.Deserialize<(float[] Mean, float[] Std)>(json);
-                if (stats.Mean.Length == 7 && stats.Std.Length == 7)
+                var stats = JsonSerializer.Deserialize<NormalizationStats>(json);
+                if (stats?.Mean?.Length == InputDim && stats.Std?.Length == InputDim)
                 {
-                    _inputMean = stats.Mean;
-                    _inputStd = stats.Std;
+                    Volatile.Write(ref _inputMean, stats.Mean);
+                    Volatile.Write(ref _inputStd, stats.Std);
+                }
+                else if (stats != null)
+                {
+                    Console.WriteLine($"[NeuralAim] Stats input dim mismatch ({stats.Mean?.Length} vs {InputDim}), ignoring.");
                 }
             }
             catch (Exception ex)
@@ -109,7 +152,12 @@ namespace CS2GameHelper.Core
         {
             try
             {
-                var stats = (_inputMean, _inputStd);
+                var stats = new NormalizationStats
+                {
+                    InputDim = InputDim,
+                    Mean = (float[])Volatile.Read(ref _inputMean).Clone(),
+                    Std = (float[])Volatile.Read(ref _inputStd).Clone()
+                };
                 var json = JsonSerializer.Serialize(stats, new JsonSerializerOptions { WriteIndented = true });
                 File.WriteAllText(_statsPath, json);
             }
@@ -119,23 +167,33 @@ namespace CS2GameHelper.Core
             }
         }
 
-        public Vector2 GetCorrection(float distance, Vector3 targetPos, Vector3 playerPos, Vector3 targetVelocity)
+        private static float[] BuildInput(in AimContext ctx)
+        {
+            var delta = ctx.TargetPos - ctx.PlayerPos;
+            return new[]
+            {
+                delta.X, delta.Y, delta.Z,
+                ctx.Distance,
+                ctx.TargetVelocity.X, ctx.TargetVelocity.Y, ctx.TargetVelocity.Z,
+                ctx.DeltaTimeMs,
+                ctx.AimSpeed,
+                ctx.TargetAccelMag
+            };
+        }
+
+        public Vector2 GetCorrection(in AimContext ctx)
         {
             if (_network == null || _isDisposed) return Vector2.Zero;
 
-            var delta = targetPos - playerPos;
-            var inputRaw = new[]
-            {
-                delta.X, delta.Y, delta.Z,
-                distance,
-                targetVelocity.X, targetVelocity.Y, targetVelocity.Z
-            };
+            var inputRaw = BuildInput(in ctx);
 
-            // Нормализация
-            var inputNorm = new float[7];
-            for (int i = 0; i < 7; i++)
+            // Нормализация (lock-free снимок)
+            var mean = Volatile.Read(ref _inputMean);
+            var std = Volatile.Read(ref _inputStd);
+            var inputNorm = new float[InputDim];
+            for (int i = 0; i < InputDim; i++)
             {
-                inputNorm[i] = (inputRaw[i] - _inputMean[i]) / (_inputStd[i] + 1e-6f);
+                inputNorm[i] = (inputRaw[i] - mean[i]) / (std[i] + 1e-6f);
             }
 
             try
@@ -143,9 +201,10 @@ namespace CS2GameHelper.Core
                 lock (_networkLock)
                 {
                     _network.eval();
-                    using var inputTensor = torch.tensor(inputNorm, dtype: ScalarType.Float32).reshape(1, 7);
+                    using var inputTensor = torch.tensor(inputNorm, dtype: ScalarType.Float32, device: _device).reshape(1, InputDim);
                     using var pred = _network.forward(inputTensor);
-                    var arr = pred.data<float>().ToArray();
+                    using var predCpu = pred.cpu();
+                    var arr = predCpu.data<float>().ToArray();
                     return new Vector2(arr[0], arr[1]);
                 }
             }
@@ -156,30 +215,56 @@ namespace CS2GameHelper.Core
             }
         }
 
-        public void AddObservation(float distance, Vector3 targetPos, Vector3 playerPos, Vector3 targetVelocity, float residualX, float residualY)
+        public void AddObservation(in AimContext ctx, float residualX, float residualY)
         {
             if (_isDisposed) return;
 
-            var delta = targetPos - playerPos;
-            var input = new[]
-            {
-                delta.X, delta.Y, delta.Z,
-                distance,
-                targetVelocity.X, targetVelocity.Y, targetVelocity.Z
-            };
+            var input = BuildInput(in ctx);
             var output = new[] { residualX, residualY };
+            var point = new TrainingDataPoint(input, output);
 
-            _trainingDataQueue.Enqueue(new TrainingDataPoint(input, output));
+            // КЛАДЕМ в PENDING (не в training queue). Обучение начнется только
+            // после вызова ConfirmHit() (фильтрует промахи).
+            _pendingObservations.Enqueue((DateTime.UtcNow, point));
 
-            while (_trainingDataQueue.Count > MaxTrainingDataSize)
-                _trainingDataQueue.TryDequeue(out _);
+            // Дропаем старые и следим за размером.
+            while (_pendingObservations.TryPeek(out var head) &&
+                   (DateTime.UtcNow - head.When).TotalMilliseconds > PendingWindowMs)
+            {
+                _pendingObservations.TryDequeue(out _);
+            }
+            while (_pendingObservations.Count > MaxPendingSize)
+            {
+                _pendingObservations.TryDequeue(out _);
+            }
+        }
 
-            _trainingSignal.Set();
+        public void ConfirmHit()
+        {
+            if (_isDisposed) return;
+            var cutoff = DateTime.UtcNow.AddMilliseconds(-HitMatchWindowMs);
+            int promoted = 0;
+            while (_pendingObservations.TryDequeue(out var entry))
+            {
+                if (entry.When < cutoff) continue;
+                _trainingDataQueue.Enqueue(entry.Point);
+                promoted++;
+                while (_trainingDataQueue.Count > MaxTrainingDataSize)
+                {
+                    _trainingDataQueue.TryDequeue(out _);
+                }
+            }
+            if (promoted > 0)
+            {
+                _trainingSignal.Set();
+            }
         }
 
         private void TrainingLoop()
         {
-            var inputAccum = new List<float[]>();
+            // O(1) sliding window vs. List.RemoveAt(0) which is O(N).
+            var inputAccum = new Queue<float[]>(capacity: 10001);
+            int sinceLastStatsRecompute = 0;
             while (!_isDisposed)
             {
                 _trainingSignal.Wait(2000);
@@ -200,36 +285,55 @@ namespace CS2GameHelper.Core
                     {
                         foreach (var point in batch)
                         {
-                            inputAccum.Add(point.Input);
-                            if (inputAccum.Count > 10000) inputAccum.RemoveAt(0);
+                            inputAccum.Enqueue(point.Input);
+                            if (inputAccum.Count > 10000) inputAccum.Dequeue();
+                            sinceLastStatsRecompute++;
                         }
 
-                        // Пересчитываем mean/std каждые 500 новых точек
-                        if (inputAccum.Count % 500 == 0)
+                        // Пересчитываем mean/std каждые 500 новых точек (не по остатку от деления —
+                        // при выполненном окне modulo хитило бы очень редко).
+                        if (sinceLastStatsRecompute >= 500 && inputAccum.Count > 0)
                         {
-                            for (int i = 0; i < 7; i++)
+                            sinceLastStatsRecompute = 0;
+                            var snapshot = inputAccum.ToArray();
+                            var newMean = new float[InputDim];
+                            var newStd = new float[InputDim];
+                            for (int i = 0; i < InputDim; i++)
                             {
-                                var col = inputAccum.Select(x => x[i]).ToArray();
-                                _inputMean[i] = col.Average();
-                                _inputStd[i] = (float)Math.Sqrt(col.Select(x => Math.Pow(x - _inputMean[i], 2)).Average()) + 0.01f;
+                                double sum = 0;
+                                for (int k = 0; k < snapshot.Length; k++) sum += snapshot[k][i];
+                                var m = sum / snapshot.Length;
+                                double v = 0;
+                                for (int k = 0; k < snapshot.Length; k++)
+                                {
+                                    var d = snapshot[k][i] - m;
+                                    v += d * d;
+                                }
+                                newMean[i] = (float)m;
+                                newStd[i] = (float)Math.Sqrt(v / snapshot.Length) + 0.01f;
                             }
+                            // Атомарная подмена целых массивов для lock-free читателей.
+                            Volatile.Write(ref _inputMean, newMean);
+                            Volatile.Write(ref _inputStd, newStd);
                             SaveStats();
                         }
 
                         // Нормализуем батч
-                        var inputsNorm = new float[batch.Count * 7];
+                        var meanLocal = _inputMean;
+                        var stdLocal = _inputStd;
+                        var inputsNorm = new float[batch.Count * InputDim];
                         var targets = new float[batch.Count * 2];
                         for (int i = 0; i < batch.Count; i++)
                         {
-                            for (int j = 0; j < 7; j++)
-                                inputsNorm[i * 7 + j] = (batch[i].Input[j] - _inputMean[j]) / (_inputStd[j] + 1e-6f);
+                            for (int j = 0; j < InputDim; j++)
+                                inputsNorm[i * InputDim + j] = (batch[i].Input[j] - meanLocal[j]) / (stdLocal[j] + 1e-6f);
                             targets[i * 2 + 0] = batch[i].Output[0];
                             targets[i * 2 + 1] = batch[i].Output[1];
                         }
 
                         _network.train();
-                        using var inputTensor = torch.tensor(inputsNorm, dtype: ScalarType.Float32).reshape(batch.Count, 7);
-                        using var targetTensor = torch.tensor(targets, dtype: ScalarType.Float32).reshape(batch.Count, 2);
+                        using var inputTensor = torch.tensor(inputsNorm, dtype: ScalarType.Float32, device: _device).reshape(batch.Count, InputDim);
+                        using var targetTensor = torch.tensor(targets, dtype: ScalarType.Float32, device: _device).reshape(batch.Count, 2);
 
                         _optimizer.zero_grad();
                         using var pred = _network.forward(inputTensor);
@@ -249,10 +353,15 @@ namespace CS2GameHelper.Core
 
         public void Save()
         {
-            if (_network != null)
+            // Обязательно под блокировкой: иначе save() может выполниться в момент,
+            // когда тренировочный поток выполняет forward/backward, что повредит веса.
+            lock (_networkLock)
             {
-                _network.eval();
-                _network.save(_modelPath);
+                if (_network != null)
+                {
+                    _network.eval();
+                    _network.save(_modelPath);
+                }
             }
         }
 

@@ -4,6 +4,8 @@ namespace CS2GameHelper.Utils;
 
 public sealed class Module : IDisposable
 {
+    public CS2GameHelper.Data.Game.GameProcess? GameProcess { get; set; }
+
     public Module(Process process, ProcessModule processModule)
     {
         Process = process ?? throw new ArgumentNullException(nameof(process));
@@ -38,10 +40,11 @@ public sealed class Module : IDisposable
 
     public void Dispose()
     {
-        Process?.Dispose();
+        // Module does NOT own Process — it is provided by GameProcess and disposed there.
+        // ProcessModule instances come from Process.Modules and are tied to the Process
+        // lifetime; disposing them here is also not our responsibility. We only drop
+        // references so the GC can reclaim wrappers.
         Process = null;
-
-        ProcessModule?.Dispose();
         ProcessModule = null;
     }
 }

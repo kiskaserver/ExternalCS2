@@ -1,4 +1,4 @@
-﻿using System.Media;
+using System.Media;
 using System.IO;
 using System.Numerics;
 using CS2GameHelper.Core.Data;
@@ -69,11 +69,11 @@ public class Player : EntityBase
         if (gameProcess.Process == null)
             throw new ArgumentNullException(nameof(gameProcess.Process), "Process cannot be null.");
 
-        ViewOffset = gameProcess.Process.Read<Vector3>(AddressBase + Offsets.m_vecViewOffset);
+        ViewOffset = gameProcess.Read<Vector3>(AddressBase + Offsets.m_vecViewOffset);
         EyePosition = Origin + ViewOffset;
         ViewAngles = gameProcess.ModuleClient.Read<Vector3>(Offsets.dwViewAngles);
-        AimPunchAngle = gameProcess.Process.Read<Vector3>(AddressBase + Offsets.m_AimPunchAngle);
-        FFlags = gameProcess.Process.Read<int>(AddressBase + Offsets.m_fFlags);
+        AimPunchAngle = gameProcess.Read<Vector3>(AddressBase + Offsets.m_AimPunchAngle);
+        FFlags = gameProcess.Read<int>(AddressBase + Offsets.m_fFlags);
 
         EyeDirection =
             GraphicsMath.GetVectorFromEulerAngles(GraphicsMath.DegreeToRadian(ViewAngles.X), GraphicsMath.DegreeToRadian(ViewAngles.Y));

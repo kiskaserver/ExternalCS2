@@ -20,22 +20,23 @@ namespace CS2GameHelper.Features
 
     public class AimBot : ThreadedServiceBase
     {
-        private const float AimBotSmoothing = 3f;
-        private static double HumanReactThreshold = 30.0;
         private const int SuppressMs = 200;
         private const int UserMouseDeltaResetMs = 50;
-        private const int AimUpdateIntervalMs = 500;
         private const int AimEventWindowMs = 1000;
-        private const double HumanEaseDistancePixels = 35.0;
-        private const double HumanMinimumGain = 0.15;
-        private const int LockJitterStartMs = 600;
-        private const int LockJitterStrongMs = 1500;
-        private const int MinShootIntervalMs = 100;
 
         private readonly ConfigManager _config = ConfigManager.Load();
-        private readonly Keys _aimBotHotKey;
         private readonly object _stateLock = new();
-        private readonly Random _humanizationRandom = new();
+        private readonly Random _humanizationRandom;
+
+        // Кэшированные параметры настройки (читаются через _config.AimBotTuning).
+        private readonly double _humanReactThreshold;
+        private readonly double _humanEaseDistancePixels;
+        private readonly double _humanMinimumGain;
+        private readonly int _lockJitterStartMs;
+        private readonly int _lockJitterStrongMs;
+        private readonly int _minShootIntervalMs;
+        private readonly int _aimUpdateIntervalMs;
+        private readonly double _aimBotSmoothing;
 
         private static double _anglePerPixelHorizontal = 1;
         private static double _anglePerPixelVertical = 1;
@@ -48,7 +49,7 @@ namespace CS2GameHelper.Features
         private double _aiAggressiveness = 1.0;
         private int _aimSuccessCount, _aimTotalCount;
         private double _dynamicFov = GraphicsMath.DegreeToRadian(15f);
-        private double _dynamicSmoothing = AimBotSmoothing;
+        private double _dynamicSmoothing;
         private DateTime _lastAimEvent = DateTime.MinValue;
         private DateTime _lastAiUpdate = DateTime.MinValue;
         private DateTime _lastSuppressed = DateTime.MinValue;
@@ -59,12 +60,31 @@ namespace CS2GameHelper.Features
         private DateTime _lastShotTime = DateTime.MinValue;
         private bool _isCalibrated;
 
+        // Контекст прицеливания (для расчёта deltaTime/accel и ConfirmHit).
+        private DateTime _lastFrameTime = DateTime.MinValue;
+        private Vector3 _lastTargetVelocity = Vector3.Zero;
+        private int _lastTargetIdForAccel = -1;
+        private int _aimBotLastDamage;
+
         public AimBot(GameProcess gameProcess, GameData gameData, UserInputHandler inputHandler)
         {
             GameProcess = gameProcess;
             GameData = gameData;
-            _aimBotHotKey = ConfigManager.Load().AimBotKey;
             _inputHandler = inputHandler; // ← используем внешний handler
+
+            var tuning = _config.AimBotTuning ?? new ConfigManager.AimBotTuningConfig();
+            _humanReactThreshold = tuning.HumanReactThreshold;
+            _humanEaseDistancePixels = tuning.HumanEaseDistancePixels;
+            _humanMinimumGain = tuning.HumanMinimumGain;
+            _lockJitterStartMs = tuning.LockJitterStartMs;
+            _lockJitterStrongMs = tuning.LockJitterStrongMs;
+            _minShootIntervalMs = tuning.MinShootIntervalMs;
+            _aimUpdateIntervalMs = tuning.AimUpdateIntervalMs;
+            _aimBotSmoothing = tuning.AimSmoothing;
+            _dynamicSmoothing = _aimBotSmoothing;
+            _humanizationRandom = tuning.HumanizationSeed > 0
+                ? new Random(tuning.HumanizationSeed)
+                : new Random();
 
             _correctionProvider = new CompositeAimProvider();
             _targetSelector = new TargetSelector();
@@ -79,12 +99,15 @@ namespace CS2GameHelper.Features
         {
             _correctionProvider.Save();
             _correctionProvider.Dispose();
-            _inputHandler.Dispose();
+            // NOTE: _inputHandler is shared (owned by Program). Do NOT dispose it here,
+            // otherwise hooks are unhooked while other features still need them and
+            // Program.Dispose triggers a redundant unhook/finalizer pass.
             base.Dispose();
         }
 
-        // Используем UserInputHandler для проверки хоткея
-        private bool IsHotKeyDown() => _inputHandler.IsKeyDown(_aimBotHotKey);
+        // Используем UserInputHandler для проверки хоткея (читаем из _config напрямую —
+        // чтобы изменение AimBotKey через меню применялось без перезапуска).
+        private bool IsHotKeyDown() => _inputHandler.IsKeyDown(_config.AimBotKey);
 
         private static bool TryMouseMoveNew(Point aimPixels)
         {
@@ -107,7 +130,7 @@ namespace CS2GameHelper.Features
                     return;
 
                 var userMoveLen = Math.Sqrt(_inputHandler.LastMouseDelta.X * (double)_inputHandler.LastMouseDelta.X + _inputHandler.LastMouseDelta.Y * (double)_inputHandler.LastMouseDelta.Y);
-                if (userMoveLen > HumanReactThreshold) _lastSuppressed = DateTime.Now;
+                if (userMoveLen > _humanReactThreshold) _lastSuppressed = DateTime.Now;
                 if ((DateTime.Now - _lastSuppressed).TotalMilliseconds < SuppressMs) return;
 
                 if (!_isCalibrated)
@@ -116,7 +139,7 @@ namespace CS2GameHelper.Features
                     _isCalibrated = true;
                 }
 
-                if ((DateTime.Now - _lastAiUpdate).TotalMilliseconds > AimUpdateIntervalMs && _userMoveCount > 0)
+                if ((DateTime.Now - _lastAiUpdate).TotalMilliseconds > _aimUpdateIntervalMs && _userMoveCount > 0)
                 {
                     _userMoveAvg = _userMoveSum / _userMoveCount;
                     _aiAggressiveness = 1.0 - Math.Min(_userMoveAvg / 20.0, 0.7);
@@ -142,17 +165,46 @@ namespace CS2GameHelper.Features
                 var aimResult = _targetSelector.FindBestTarget(GameData, _dynamicFov);
                 Point aimPixels = Point.Empty;
 
+                // === Расчёт фич для AimContext ===
+                var nowFrame = DateTime.UtcNow;
+                float deltaTimeMs = _lastFrameTime == DateTime.MinValue ? 16f
+                    : (float)Math.Clamp((nowFrame - _lastFrameTime).TotalMilliseconds, 1.0, 100.0);
+                _lastFrameTime = nowFrame;
+                float aimSpeed = (float)Math.Sqrt(
+                    _inputHandler.LastMouseDelta.X * (double)_inputHandler.LastMouseDelta.X +
+                    _inputHandler.LastMouseDelta.Y * (double)_inputHandler.LastMouseDelta.Y);
+
+                float targetAccelMag = 0f;
+                if (aimResult.Found)
+                {
+                    if (aimResult.TargetId == _lastTargetIdForAccel)
+                    {
+                        var dv = aimResult.TargetVelocity - _lastTargetVelocity;
+                        targetAccelMag = dv.Length() / Math.Max(deltaTimeMs, 1f) * 1000f; // в unit/s^2
+                    }
+                    _lastTargetVelocity = aimResult.TargetVelocity;
+                    _lastTargetIdForAccel = aimResult.TargetId;
+                }
+                else
+                {
+                    _lastTargetIdForAccel = -1;
+                    _lastTargetVelocity = Vector3.Zero;
+                }
+
                 if (aimResult.Found)
                 {
                     AimingMath.GetAimAngles(GameData.Player, aimResult.TargetPosition, out _, out var angles);
                     AimingMath.GetAimPixels(angles, _anglePerPixelHorizontal, _anglePerPixelVertical, out aimPixels);
 
-                    var correction = _correctionProvider.GetCorrection(
+                    var ctx = new AimContext(
                         aimResult.Distance,
                         aimResult.TargetPosition,
                         GameData.Player.EyePosition,
-                        aimResult.TargetVelocity
-                    );
+                        aimResult.TargetVelocity,
+                        deltaTimeMs,
+                        aimSpeed,
+                        targetAccelMag);
+                    var correction = _correctionProvider.GetCorrection(in ctx);
 
                     aimPixels.X = (int)Math.Round(aimPixels.X - correction.X);
                     aimPixels.Y = (int)Math.Round(aimPixels.Y - correction.Y);
@@ -172,7 +224,7 @@ namespace CS2GameHelper.Features
 
                 var shouldWait = false;
 
-                if (isAutoMode && aimResult.Found && (DateTime.Now - _lastShotTime).TotalMilliseconds > MinShootIntervalMs)
+                if (isAutoMode && aimResult.Found && (DateTime.Now - _lastShotTime).TotalMilliseconds > _minShootIntervalMs)
                 {
                     lock (_stateLock) { _currentState = AimBotState.DownSuppressed; }
                     shouldWait = TryMouseDown();
@@ -215,16 +267,20 @@ namespace CS2GameHelper.Features
                     var residualX = (float)(errorPixelsX - appliedCorrectionX);
                     var residualY = (float)(errorPixelsY - appliedCorrectionY);
 
-                    // 6. Добавляем наблюдение
-                    _correctionProvider.AddObservation(
+                    // 6. Добавляем наблюдение (пойдёт в PENDING; промоверится при ConfirmHit)
+                    var obsCtx = new AimContext(
                         aimResult.Distance,
                         aimResult.TargetPosition,
                         GameData.Player.EyePosition,
                         aimResult.TargetVelocity,
-                        residualX,
-                        residualY
-                    );
+                        deltaTimeMs,
+                        aimSpeed,
+                        targetAccelMag);
+                    _correctionProvider.AddObservation(in obsCtx, residualX, residualY);
                 }
+
+                // === Детект попадания по дельте урона → ConfirmHit() для обучения ===
+                TryConfirmHitFromDamage();
 
                 if (!aimResult.Found)
                 {
@@ -267,16 +323,48 @@ namespace CS2GameHelper.Features
 
             if (pixelDistance > 0)
             {
-                var gain = Math.Clamp(pixelDistance / HumanEaseDistancePixels, HumanMinimumGain, 1.0);
+                var gain = Math.Clamp(pixelDistance / _humanEaseDistancePixels, _humanMinimumGain, 1.0);
                 aimPixels.X = (int)Math.Round(aimPixels.X * gain);
                 aimPixels.Y = (int)Math.Round(aimPixels.Y * gain);
             }
 
-            if (lockDuration > LockJitterStartMs && pixelDistance < 8)
+            if (lockDuration > _lockJitterStartMs && pixelDistance < 8)
             {
-                var jitterRange = lockDuration > LockJitterStrongMs ? 2 : 1;
+                var jitterRange = lockDuration > _lockJitterStrongMs ? 2 : 1;
                 aimPixels.X += _humanizationRandom.Next(-jitterRange, jitterRange + 1);
                 aimPixels.Y += _humanizationRandom.Next(-jitterRange, jitterRange + 1);
+            }
+        }
+
+        private void TryConfirmHitFromDamage()
+        {
+            try
+            {
+                if (GameProcess?.Process == null || GameProcess.ModuleClient == null) return;
+                var localController = GameProcess.ModuleClient.Read<IntPtr>(Offsets.client_dll.dwLocalPlayerController);
+                if (localController == IntPtr.Zero) return;
+                var actionTracking = GameProcess.Read<IntPtr>(
+                    IntPtr.Add(localController, Offsets.m_pActionTrackingServices));
+                if (actionTracking == IntPtr.Zero) return;
+                int currentDamage = GameProcess.Read<int>(
+                    IntPtr.Add(actionTracking, Offsets.m_flTotalRoundDamageDealt));
+
+                // Сначала калибруем (например, после перезахода в раунд damage может сброситься).
+                if (currentDamage < _aimBotLastDamage)
+                {
+                    _aimBotLastDamage = currentDamage;
+                    return;
+                }
+
+                if (currentDamage > _aimBotLastDamage)
+                {
+                    _correctionProvider.ConfirmHit();
+                    _aimBotLastDamage = currentDamage;
+                }
+            }
+            catch
+            {
+                // Чтение памяти может вернуть мусор — глушим, цикл аим-бота не должен падать.
             }
         }
 

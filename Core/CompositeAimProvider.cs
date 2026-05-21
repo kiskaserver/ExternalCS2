@@ -1,8 +1,9 @@
+using System;
 using System.Numerics;
 
 namespace CS2GameHelper.Core
 {
-    public class CompositeAimProvider : IAimCorrectionProvider
+    public class CompositeAimProvider : IAimCorrectionProvider, IDisposable
     {
         private readonly StatisticalAimProvider _stat;
         private readonly NeuralAimProvider _neural;
@@ -13,17 +14,23 @@ namespace CS2GameHelper.Core
             _neural = new NeuralAimProvider();
         }
 
-        public Vector2 GetCorrection(float distance, Vector3 targetPos, Vector3 playerPos, Vector3 targetVelocity)
+        public Vector2 GetCorrection(in AimContext ctx)
         {
-            var stat = _stat.GetCorrection(distance, targetPos, playerPos, targetVelocity);
-            var neural = _neural.GetCorrection(distance, targetPos, playerPos, targetVelocity);
+            var stat = _stat.GetCorrection(in ctx);
+            var neural = _neural.GetCorrection(in ctx);
             return stat + neural;
         }
 
-        public void AddObservation(float distance, Vector3 targetPos, Vector3 playerPos, Vector3 targetVelocity, float residualX, float residualY)
+        public void AddObservation(in AimContext ctx, float residualX, float residualY)
         {
-            _stat.AddObservation(distance, targetPos, playerPos, targetVelocity, residualX, residualY);
-            _neural.AddObservation(distance, targetPos, playerPos, targetVelocity, residualX, residualY);
+            _stat.AddObservation(in ctx, residualX, residualY);
+            _neural.AddObservation(in ctx, residualX, residualY);
+        }
+
+        public void ConfirmHit()
+        {
+            _stat.ConfirmHit();
+            _neural.ConfirmHit();
         }
 
         public void Save()
@@ -34,6 +41,7 @@ namespace CS2GameHelper.Core
 
         public void Dispose()
         {
+            (_stat as IDisposable)?.Dispose();
             _neural.Dispose();
         }
     }

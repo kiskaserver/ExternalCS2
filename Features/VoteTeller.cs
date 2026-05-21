@@ -65,10 +65,10 @@ internal class VoteTeller : ThreadedServiceBase
                 return;
             }
 
-            _activeIssue = SafeRead(() => _gameProcess.Process.Read<int>(voteController + OffActiveIssue), -1);
-            _votingTeam = SafeRead(() => _gameProcess.Process.Read<int>(voteController + OffVotingTeam), 0);
-            _yesVotes = SafeRead(() => _gameProcess.Process.Read<int>(voteController + OffYesVotes), 0);
-            _noVotes = SafeRead(() => _gameProcess.Process.Read<int>(voteController + OffNoVotes), 0);
+            _activeIssue = SafeRead(() => _gameProcess.Read<int>(voteController + OffActiveIssue), -1);
+            _votingTeam = SafeRead(() => _gameProcess.Read<int>(voteController + OffVotingTeam), 0);
+            _yesVotes = SafeRead(() => _gameProcess.Read<int>(voteController + OffYesVotes), 0);
+            _noVotes = SafeRead(() => _gameProcess.Read<int>(voteController + OffNoVotes), 0);
             _isVoting = _activeIssue > 0;
         }
         catch
@@ -83,20 +83,20 @@ internal class VoteTeller : ThreadedServiceBase
 
         for (var i = VoteControllerStartIndex; i < VoteControllerMaxIndex; i++)
         {
-            var listEntry = SafeRead(() => _gameProcess.Process.Read<IntPtr>(entityList + 8 * (i >> 9) + EntityListEntryOffset), IntPtr.Zero);
+            var listEntry = SafeRead(() => _gameProcess.Read<IntPtr>(entityList + 8 * (i >> 9) + EntityListEntryOffset), IntPtr.Zero);
             if (listEntry == IntPtr.Zero) continue;
 
-            var entity = SafeRead(() => _gameProcess.Process.Read<IntPtr>(listEntry + EntityListStride * (i & 0x1FF)), IntPtr.Zero);
+            var entity = SafeRead(() => _gameProcess.Read<IntPtr>(listEntry + EntityListStride * (i & 0x1FF)), IntPtr.Zero);
             if (entity == IntPtr.Zero) continue;
 
-            var entityIdentity = SafeRead(() => _gameProcess.Process.Read<IntPtr>(entity + 0x10), IntPtr.Zero);
+            var entityIdentity = SafeRead(() => _gameProcess.Read<IntPtr>(entity + 0x10), IntPtr.Zero);
             if (entityIdentity == IntPtr.Zero) continue;
 
-            var designerNamePtr = SafeRead(() => _gameProcess.Process.Read<IntPtr>(entityIdentity + 0x20), IntPtr.Zero);
+            var designerNamePtr = SafeRead(() => _gameProcess.Read<IntPtr>(entityIdentity + 0x20), IntPtr.Zero);
             if (designerNamePtr == IntPtr.Zero) continue;
 
             string? designerName = null;
-            try { designerName = _gameProcess.Process.ReadString(designerNamePtr, 64); } catch { /* ignore */ }
+            try { designerName = _gameProcess.ReadString(designerNamePtr, 64); } catch { /* ignore */ }
             if (designerName == "vote_controller") return entity;
         }
 

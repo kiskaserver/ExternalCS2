@@ -16,6 +16,7 @@
         <InformationalVersion>2.0.0</InformationalVersion>
         <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
         <StartupObject>CS2GameHelper.Program</StartupObject>
+        <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     </PropertyGroup>
 
     <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">

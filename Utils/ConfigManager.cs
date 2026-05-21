@@ -105,6 +105,23 @@ public class ConfigManager
     // Hit sound and on-screen hit text configuration
     public HitSoundConfig HitSound { get; set; } = new();
 
+    // v2.1: AimBot tuning (вынесли магические числа)
+    public AimBotTuningConfig AimBotTuning { get; set; } = new();
+
+    public class AimBotTuningConfig
+    {
+        public double HumanReactThreshold { get; set; } = 30.0;
+        public double HumanEaseDistancePixels { get; set; } = 35.0;
+        public double HumanMinimumGain { get; set; } = 0.15;
+        public int LockJitterStartMs { get; set; } = 600;
+        public int LockJitterStrongMs { get; set; } = 1500;
+        public int MinShootIntervalMs { get; set; } = 100;
+        public double AimSmoothing { get; set; } = 3.0;
+        public int AimUpdateIntervalMs { get; set; } = 500;
+        // 0 → случайный seed (недетерминированный). Другое → воспроизводимый джиттер.
+        public int HumanizationSeed { get; set; } = 0;
+    }
+
     public class HitSoundConfig
     {
         public bool Enabled { get; set; } = true;
@@ -153,6 +170,7 @@ public class ConfigManager
             config.SpectatorList ??= new SpectatorListConfig();
             config.HitSound ??= new HitSoundConfig();
             config.VoteTeller ??= new VoteTellerConfig();
+            config.AimBotTuning ??= new AimBotTuningConfig();
 
             return config;
         }
@@ -276,6 +294,17 @@ public class ConfigManager
         VoteTeller.ColorAll = other.VoteTeller.ColorAll;
         VoteTeller.X = other.VoteTeller.X;
         VoteTeller.Y = other.VoteTeller.Y;
+
+        AimBotTuning ??= new AimBotTuningConfig();
+        AimBotTuning.HumanReactThreshold = other.AimBotTuning.HumanReactThreshold;
+        AimBotTuning.HumanEaseDistancePixels = other.AimBotTuning.HumanEaseDistancePixels;
+        AimBotTuning.HumanMinimumGain = other.AimBotTuning.HumanMinimumGain;
+        AimBotTuning.LockJitterStartMs = other.AimBotTuning.LockJitterStartMs;
+        AimBotTuning.LockJitterStrongMs = other.AimBotTuning.LockJitterStrongMs;
+        AimBotTuning.MinShootIntervalMs = other.AimBotTuning.MinShootIntervalMs;
+        AimBotTuning.AimSmoothing = other.AimBotTuning.AimSmoothing;
+        AimBotTuning.AimUpdateIntervalMs = other.AimBotTuning.AimUpdateIntervalMs;
+        AimBotTuning.HumanizationSeed = other.AimBotTuning.HumanizationSeed;
     }
 
     public static void Save(ConfigManager options)
@@ -369,7 +398,8 @@ public class ConfigManager
                 HeadshotSoundFile = "assets/sounds/headshot.wav",
                 HeadshotDamageThreshold = 100,
                 TextDurationSeconds = 1.5
-            }
+            },
+            AimBotTuning = new AimBotTuningConfig()
         };
     }
 }

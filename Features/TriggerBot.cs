@@ -46,7 +46,7 @@ public sealed class TriggerBot : ThreadedServiceBase
         if (_gameProcess.Process == null)
             return;
 
-        var entityTeam = _gameProcess.Process.Read<int>(targetEntity + Offsets.m_iTeamNum);
+        var entityTeam = _gameProcess.Read<int>(targetEntity + Offsets.m_iTeamNum);
         if (!ShouldTriggerOnEntity(entityTeam))
             return;
 
@@ -71,15 +71,15 @@ public sealed class TriggerBot : ThreadedServiceBase
         if (localPlayerPawn == IntPtr.Zero)
             return IntPtr.Zero;
 
-        var entityId = _gameProcess.Process.Read<int>(localPlayerPawn + Offsets.m_iIDEntIndex);
+        var entityId = _gameProcess.Read<int>(localPlayerPawn + Offsets.m_iIDEntIndex);
         if (entityId < 0)
             return IntPtr.Zero;
 
         var entityList = _gameProcess.ModuleClient.Read<IntPtr>(Offsets.dwEntityList);
-        var entityEntry = _gameProcess.Process.Read<IntPtr>(
+        var entityEntry = _gameProcess.Read<IntPtr>(
             entityList + 8 * (entityId >> 9) + 0x10);
 
-        return _gameProcess.Process.Read<IntPtr>(
+        return _gameProcess.Read<IntPtr>(
             entityEntry + 112 * (entityId & 0x1FF));
     }
 
@@ -113,7 +113,7 @@ public sealed class TriggerBot : ThreadedServiceBase
             return false;
 
         // Читаем позицию головы (или origin, если костей нет)
-        var origin = _gameProcess.Process.Read<Vector3>(entityPtr + Offsets.m_vecOrigin);
+        var origin = _gameProcess.Read<Vector3>(entityPtr + Offsets.m_vecOrigin);
         var eyePos = _gameData.Player.EyePosition;
         var toTarget = origin - eyePos;
         var distance = toTarget.Length();

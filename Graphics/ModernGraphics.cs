@@ -32,6 +32,7 @@ public class ModernGraphics : ThreadedServiceBase
     private GRGlInterface? _grInterface;
     private GRContext? _grContext;
     private GRBackendRenderTarget? _renderTarget;
+    private bool _fontsInitialized;
 
     private readonly FpsCounter _fpsCounter = new();
     private readonly object _renderLock = new();
@@ -48,6 +49,7 @@ public class ModernGraphics : ThreadedServiceBase
     private const int WS_EX_TOOLWINDOW = 0x00000080;
     private const int WS_EX_NOACTIVATE = unchecked((int)0x08000000);
     private const uint LWA_ALPHA = 0x02;
+    private const uint WDA_EXCLUDEFROMCAPTURE = 0x00000011;
 
     private const uint SWP_NOSIZE = 0x0001;
     private const uint SWP_NOMOVE = 0x0002;
@@ -92,7 +94,11 @@ public class ModernGraphics : ThreadedServiceBase
     private void EnsureInitialized()
     {
         _window ??= InitializeWindow();
-        InitializeFonts();
+        if (!_fontsInitialized)
+        {
+            InitializeFonts();
+            _fontsInitialized = true;
+        }
     }
 
     private IWindow InitializeWindow()
@@ -244,6 +250,7 @@ public class ModernGraphics : ThreadedServiceBase
         exStyle |= WS_EX_LAYERED | WS_EX_TRANSPARENT | WS_EX_TOOLWINDOW | WS_EX_NOACTIVATE;
         User32.SetWindowLong(hwnd, GWL_EXSTYLE, exStyle);
         User32.SetLayeredWindowAttributes(hwnd, 0, 255, LWA_ALPHA);
+        User32.SetWindowDisplayAffinity(hwnd, WDA_EXCLUDEFROMCAPTURE);
     }
 
     // === КОМАНДЫ ОТРИСОВКИ ===
@@ -582,11 +589,22 @@ public class ModernGraphics : ThreadedServiceBase
         _renderTarget?.Dispose();
         _grContext?.Dispose();
         _grInterface?.Dispose();
-        _defaultFont?.Dispose();
-        _undefeatedFont?.Dispose();
-        _emojiFont?.Dispose();
+
+        // Avoid double-disposing typefaces that were aliased to _defaultFont
+        // when the corresponding .ttf file was missing.
+        var disposedFonts = new HashSet<SKTypeface>(ReferenceEqualityComparer.Instance);
+        TryDispose(_defaultFont, disposedFonts);
+        TryDispose(_undefeatedFont, disposedFonts);
+        TryDispose(_emojiFont, disposedFonts);
+
         _window?.Dispose();
         _gl?.Dispose();
+    }
+
+    private static void TryDispose(SKTypeface? font, HashSet<SKTypeface> already)
+    {
+        if (font == null) return;
+        if (already.Add(font)) font.Dispose();
     }
 
     // === ВСПОМОГАТЕЛЬНЫЕ ТИПЫ ===

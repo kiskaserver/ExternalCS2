@@ -87,24 +87,26 @@ public sealed class Program : IDisposable
         Console.WriteLine("  Close this window to exit");
         Console.WriteLine();
 
-        // Create a simple message loop instead of blocking on console input
-        var running = true;
+        // Create a simple message loop instead of blocking on console input.
+        // CancellationTokenSource — atomic, безопасно дергать из консольного потока,
+        // основной цикл просыпается по WaitOne сразу.
+        using var runCts = new CancellationTokenSource();
         Thread consoleThread = new Thread(() =>
         {
             try
             {
-                while (running)
+                while (!runCts.IsCancellationRequested)
                 {
                     if (Console.KeyAvailable)
                     {
                         var key = Console.ReadKey(true).Key;
                         if (key == ConsoleKey.Q || key == ConsoleKey.Escape)
                         {
-                            running = false;
+                            runCts.Cancel();
                             break;
                         }
                     }
-                    Thread.Sleep(100);
+                    if (runCts.Token.WaitHandle.WaitOne(100)) break;
                 }
             }
             catch
@@ -112,15 +114,15 @@ public sealed class Program : IDisposable
                 // Console might not be available in some scenarios
             }
         });
-        
+
         consoleThread.IsBackground = true;
         consoleThread.Start();
 
-        // Main application loop
-        while (running)
-        {
-            Thread.Sleep(50);
-        }
+        // Main application loop — блокируемся на токене вместо busy-wait sleep
+        runCts.Token.WaitHandle.WaitOne();
+
+        // Аккуратно дожидаемся завершения консольного потока.
+        consoleThread.Join(TimeSpan.FromSeconds(1));
 
         Console.WriteLine("Shutting down...");
     }

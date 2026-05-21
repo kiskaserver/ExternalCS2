@@ -71,23 +71,23 @@ public abstract class EntityBase
         if (gameProcess.Process == null)
             throw new ArgumentNullException(nameof(gameProcess.Process), "Process cannot be null.");
 
-        LifeState = gameProcess.Process.Read<bool>(AddressBase + Offsets.m_lifeState);
-        Health = gameProcess.Process.Read<int>(AddressBase + Offsets.m_iHealth);
-        Team = gameProcess.Process.Read<int>(AddressBase + Offsets.m_iTeamNum).ToTeam();
-        Origin = gameProcess.Process.Read<Vector3>(AddressBase + Offsets.m_vOldOrigin);
-        ShotsFired = gameProcess.Process.Read<int>(AddressBase + Offsets.m_iShotsFired);
+        LifeState = gameProcess.Read<bool>(AddressBase + Offsets.m_lifeState);
+        Health = gameProcess.Read<int>(AddressBase + Offsets.m_iHealth);
+        Team = gameProcess.Read<int>(AddressBase + Offsets.m_iTeamNum).ToTeam();
+        Origin = gameProcess.Read<Vector3>(AddressBase + Offsets.m_vOldOrigin);
+        ShotsFired = gameProcess.Read<int>(AddressBase + Offsets.m_iShotsFired);
 
         // === Читаем недостающие поля ===
-        Armor = gameProcess.Process.Read<int>(AddressBase + Offsets.m_ArmorValue);
-        HasHelmet = gameProcess.Process.Read<bool>(AddressBase + Offsets.m_bHasHelmet);
-        IsVisible = gameProcess.Process.Read<bool>(AddressBase + Offsets.m_bSpotted);
-        Flags = (EntityFlags)gameProcess.Process.Read<int>(AddressBase + Offsets.m_fFlags);
-        IsDefusing = gameProcess.Process.Read<bool>(AddressBase + Offsets.m_bBeingDefused);
+        Armor = gameProcess.Read<int>(AddressBase + Offsets.m_ArmorValue);
+        HasHelmet = gameProcess.Read<bool>(AddressBase + Offsets.m_bHasHelmet);
+        IsVisible = gameProcess.Read<bool>(AddressBase + Offsets.m_bSpotted);
+        Flags = (EntityFlags)gameProcess.Read<int>(AddressBase + Offsets.m_fFlags);
+        IsDefusing = gameProcess.Read<bool>(AddressBase + Offsets.m_bBeingDefused);
 
         // ViewAngle (углы камеры)
         try
         {
-            var viewPunch = gameProcess.Process.Read<Vector2>(AddressBase + Offsets.m_angEyeAngles);
+            var viewPunch = gameProcess.Read<Vector2>(AddressBase + Offsets.m_angEyeAngles);
             ViewAngle = viewPunch;
         }
         catch
@@ -98,9 +98,9 @@ public abstract class EntityBase
         // Оружие
         try
         {
-            CurrentWeapon = gameProcess.Process.Read<IntPtr>(AddressBase + Offsets.m_pClippingWeapon);
+            CurrentWeapon = gameProcess.Read<IntPtr>(AddressBase + Offsets.m_pClippingWeapon);
             var weaponIndexAddress = CurrentWeapon + Offsets.m_AttributeManager + Offsets.m_Item + Offsets.m_iItemDefinitionIndex;
-            WeaponIndex = gameProcess.Process.Read<short>(weaponIndexAddress);
+            WeaponIndex = gameProcess.Read<short>(weaponIndexAddress);
 
             var name = Enum.GetName(typeof(WeaponIndexes), WeaponIndex);
             CurrentWeaponName = string.IsNullOrEmpty(name) ? $"weapon_{WeaponIndex}" : name;
@@ -112,11 +112,11 @@ public abstract class EntityBase
             CurrentWeaponName = string.Empty;
         }
 
-        Velocity = gameProcess.Process.Read<Vector3>(AddressBase + Offsets.m_vecAbsVelocity);
+        Velocity = gameProcess.Read<Vector3>(AddressBase + Offsets.m_vecAbsVelocity);
 
         if (gameProcess.Process != null)
         {
-            ObserverTarget = gameProcess.Process.Read<IntPtr>(AddressBase + Offsets.m_hObserverTarget);
+            ObserverTarget = gameProcess.Read<IntPtr>(AddressBase + Offsets.m_hObserverTarget);
         }
 
 

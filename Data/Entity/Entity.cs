@@ -40,10 +40,10 @@ public class Entity : EntityBase
 
         if (gameProcess?.Process == null) return IntPtr.Zero;
 
-        var listEntry = gameProcess.Process.Read<IntPtr>(EntityList + 8 * entryIndex + 16);
+        var listEntry = gameProcess.Read<IntPtr>(EntityList + 8 * entryIndex + 16);
 
         return listEntry != IntPtr.Zero
-            ? gameProcess.Process.Read<IntPtr>(listEntry + 112 * (Id & 0x1FF))
+            ? gameProcess.Read<IntPtr>(listEntry + 112 * (Id & 0x1FF))
             : IntPtr.Zero;
     }
 
@@ -51,12 +51,12 @@ public class Entity : EntityBase
     {
         if (gameProcess?.Process == null) return IntPtr.Zero;
 
-        var playerPawn = gameProcess.Process.Read<int>(ControllerBase + Offsets.m_hPawn);
+        var playerPawn = gameProcess.Read<int>(ControllerBase + Offsets.m_hPawn);
         var pawnIndex = (playerPawn & 0x7FFF) >> 9;
-        var listEntry = gameProcess.Process.Read<IntPtr>(EntityList + 0x8 * pawnIndex + 16);
+        var listEntry = gameProcess.Read<IntPtr>(EntityList + 0x8 * pawnIndex + 16);
 
         return listEntry != IntPtr.Zero
-            ? gameProcess.Process.Read<IntPtr>(listEntry + 112 * (playerPawn & 0x1FF))
+            ? gameProcess.Read<IntPtr>(listEntry + 112 * (playerPawn & 0x1FF))
             : IntPtr.Zero;
     }
 
@@ -64,12 +64,12 @@ public class Entity : EntityBase
     {
         if (!base.Update(gameProcess)) return false;
 
-        _dormant = gameProcess.Process != null && gameProcess.Process.Read<bool>(AddressBase + Offsets.m_bDormant);
-        IsSpotted = gameProcess.Process?.Read<bool>(AddressBase + Offsets.m_entitySpottedState + 0x8) ?? false;
-        IsInScope = gameProcess.Process?.Read<int>(AddressBase + Offsets.m_bIsScoped) ?? 0;
-        FlashAlpha = gameProcess.Process?.Read<int>(AddressBase + Offsets.m_flFlashDuration) ?? 0;
+        _dormant = gameProcess.Process != null && gameProcess.Read<bool>(AddressBase + Offsets.m_bDormant);
+        IsSpotted = gameProcess.Process != null && gameProcess.Read<bool>(AddressBase + Offsets.m_entitySpottedState + 0x8);
+        IsInScope = gameProcess.Process != null ? gameProcess.Read<int>(AddressBase + Offsets.m_bIsScoped) : 0;
+        FlashAlpha = gameProcess.Process != null ? gameProcess.Read<int>(AddressBase + Offsets.m_flFlashDuration) : 0;
         Name = gameProcess.Process != null
-            ? gameProcess.Process.ReadString(ControllerBase + Offsets.m_iszPlayerName)
+            ? gameProcess.ReadString(ControllerBase + Offsets.m_iszPlayerName)
             : string.Empty;
 
         if (!IsAlive())
@@ -77,8 +77,8 @@ public class Entity : EntityBase
             // Читаем, кто нанес последний урон, только для мертвых сущностей
             if (gameProcess?.Process != null)
             {
-                LastAttacker = gameProcess.Process.Read<IntPtr>(AddressBase + Offsets.m_hLastAttacker);
-                LastDamageTime = gameProcess.Process.Read<float>(AddressBase + Offsets.m_flDeathInfoTime);
+                LastAttacker = gameProcess.Read<IntPtr>(AddressBase + Offsets.m_hLastAttacker);
+                LastDamageTime = gameProcess.Read<float>(AddressBase + Offsets.m_flDeathInfoTime);
             }
         }
 
@@ -92,12 +92,12 @@ public class Entity : EntityBase
         {
             if (gameProcess?.Process == null) return false;
 
-            var gameSceneNode = gameProcess.Process.Read<IntPtr>(AddressBase + Offsets.m_pGameSceneNode);
-            var boneArray = gameProcess.Process.Read<IntPtr>(gameSceneNode + Offsets.m_modelState + 128);
+            var gameSceneNode = gameProcess.Read<IntPtr>(AddressBase + Offsets.m_pGameSceneNode);
+            var boneArray = gameProcess.Read<IntPtr>(gameSceneNode + Offsets.m_modelState + 128);
 
             foreach (var (boneName, boneIndex) in Offsets.Bones)
             {
-                var bonePos = gameProcess.Process.Read<Vector3>(boneArray + boneIndex * 32);
+                var bonePos = gameProcess.Read<Vector3>(boneArray + boneIndex * 32);
                 _bonePositions.AddOrUpdate(boneName, bonePos, (_, _) => bonePos);
             }
 

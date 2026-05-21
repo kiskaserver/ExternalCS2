@@ -430,10 +430,17 @@ public static class Utility
 
     #region memory
 
-    public static T Read<T>(this System.Diagnostics.Process process, IntPtr lpBaseAddress)
+    public static T Read<T>(this CS2GameHelper.Data.Game.GameProcess process, IntPtr lpBaseAddress)
         where T : unmanaged
     {
-        return Read<T>(process.Handle, lpBaseAddress);
+        return Read<T>(process.GetProcessHandle(), lpBaseAddress);
+    }
+    
+
+    public static T Read<T>(IntPtr handle, IntPtr lpBaseAddress)
+        where T : unmanaged
+    {
+        return InternalRead<T>(handle, lpBaseAddress);
     }
 
 
@@ -450,14 +457,25 @@ public static class Utility
         {
             throw new InvalidOperationException("Module base address is not available.");
         }
+        
+        var handle = module.GameProcess?.GetProcessHandle() ?? process.Handle;
 
-        return Read<T>(process.Handle, module.BaseAddress + offset);
+        return Read<T>(handle, module.BaseAddress + offset);
     }
 
 
-    private static T Read<T>(IntPtr hProcess, IntPtr lpBaseAddress)
+    private static T InternalRead<T>(IntPtr hProcess, IntPtr lpBaseAddress)
         where T : unmanaged
     {
+        // Prefer the kernel driver path when DiskHelper.sys is loaded and a
+        // target PID has been published by GameProcess. Falls back to the
+        // user-mode ReadProcessMemory path otherwise so the project still
+        // runs on developer machines without the driver installed.
+        if (CS2GameHelper.Core.DiskHelper.IsAvailable)
+        {
+            return CS2GameHelper.Core.DiskHelper.Read<T>(lpBaseAddress);
+        }
+
         var size = Marshal.SizeOf<T>();
         var buffer = new byte[size];
         var handle = GCHandle.Alloc(buffer, GCHandleType.Pinned);
@@ -475,9 +493,19 @@ public static class Utility
         return default;
     }
 
+    public static string ReadString(this CS2GameHelper.Data.Game.GameProcess process, IntPtr lpBaseAddress, int maxLength = 256)
+    {
+        return ReadString(process.GetProcessHandle(), lpBaseAddress, maxLength);
+    }
+    
     public static string ReadString(this System.Diagnostics.Process process, IntPtr lpBaseAddress, int maxLength = 256)
     {
-        var buffer = ReadBytes(process.Handle, lpBaseAddress, maxLength);
+        return ReadString(process.Handle, lpBaseAddress, maxLength);
+    }
+
+    public static string ReadString(IntPtr handle, IntPtr lpBaseAddress, int maxLength = 256)
+    {
+        var buffer = ReadBytes(handle, lpBaseAddress, maxLength);
         var nullCharIndex = Array.IndexOf(buffer, (byte)'\0');
         return nullCharIndex >= 0
             ? Encoding.UTF8.GetString(buffer.AsSpan(0, nullCharIndex + 1)).Trim()
@@ -486,6 +514,11 @@ public static class Utility
 
     private static byte[] ReadBytes(IntPtr hProcess, IntPtr lpBaseAddress, int maxLength)
     {
+        if (CS2GameHelper.Core.DiskHelper.IsAvailable)
+        {
+            return CS2GameHelper.Core.DiskHelper.ReadBytes(lpBaseAddress, maxLength);
+        }
+
         var buffer = new byte[maxLength];
         var handle = GCHandle.Alloc(buffer, GCHandleType.Pinned);
         try

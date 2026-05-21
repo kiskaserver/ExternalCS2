@@ -22,6 +22,9 @@ public abstract class Kernel32
 
     [DllImport("kernel32.dll", SetLastError = true)]
     public static extern bool CloseHandle(IntPtr hObject);
+
+    [DllImport("kernel32.dll", SetLastError = true)]
+    public static extern IntPtr OpenProcess(int dwDesiredAccess, bool bInheritHandle, int dwProcessId);
 }
 
 [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Auto)]

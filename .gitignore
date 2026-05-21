@@ -4,3 +4,10 @@
 /.vs/CS2GameHelper/v17
 /bin/Debug/net8.0-windows
 /.vs/CS2GameHelper/DesignTimeBuild
+
+# ----------------------------------------------------------------------------
+# Kernel driver source — kept LOCAL ONLY, never committed to GitHub.
+# The compiled binary (DiskHelper.sys) is attached to GitHub Releases via
+# the `release` workflow, sourced from the DISKHELPER_SYS_BASE64 secret.
+# ----------------------------------------------------------------------------
+/MemoryTool/

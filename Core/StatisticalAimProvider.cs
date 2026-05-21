@@ -20,8 +20,11 @@ public class StatisticalAimProvider : IAimCorrectionProvider
     private readonly string _filePath;
     private readonly object _sync = new();
     private readonly Dictionary<int, AimBucketData> _buckets = new();
+    private readonly Queue<(DateTime When, float Distance, float ResX, float ResY)> _pending = new();
     private const double MaxWeight = 100.0;
     private const double Alpha = 0.1; // EMA коэффициент
+    private const int PendingWindowMs = 600;
+    private const int HitMatchWindowMs = 250;
 
     public StatisticalAimProvider(string? storageFile = null)
     {
@@ -29,11 +32,11 @@ public class StatisticalAimProvider : IAimCorrectionProvider
         Load();
     }
 
-    public Vector2 GetCorrection(float distance, Vector3 targetPos, Vector3 playerPos, Vector3 targetVelocity)
+    public Vector2 GetCorrection(in AimContext ctx)
     {
         lock (_sync)
         {
-            var key = GetBucketKey(distance);
+            var key = GetBucketKey(ctx.Distance);
             if (_buckets.TryGetValue(key, out var bucket) && bucket.Weight > 0.1)
             {
                 return new Vector2((float)(bucket.SumX / bucket.Weight), (float)(bucket.SumY / bucket.Weight));
@@ -42,30 +45,52 @@ public class StatisticalAimProvider : IAimCorrectionProvider
         }
     }
 
-    public void AddObservation(float distance, Vector3 targetPos, Vector3 playerPos, Vector3 targetVelocity, float residualX, float residualY)
+    public void AddObservation(in AimContext ctx, float residualX, float residualY)
     {
         if (Math.Abs(residualX) > 50 || Math.Abs(residualY) > 50) return;
 
         lock (_sync)
         {
-            var key = GetBucketKey(distance);
-            if (!_buckets.TryGetValue(key, out var bucket))
-            {
-                bucket = new AimBucketData();
-                _buckets[key] = bucket;
-            }
+            _pending.Enqueue((DateTime.UtcNow, ctx.Distance, residualX, residualY));
+            var cutoff = DateTime.UtcNow.AddMilliseconds(-PendingWindowMs);
+            while (_pending.Count > 0 && _pending.Peek().When < cutoff)
+                _pending.Dequeue();
+        }
+    }
 
-            // EMA update
-            bucket.SumX = Alpha * residualX + (1 - Alpha) * bucket.SumX;
-            bucket.SumY = Alpha * residualY + (1 - Alpha) * bucket.SumY;
-            bucket.Weight = Alpha + (1 - Alpha) * bucket.Weight;
-
-            if (bucket.Weight > MaxWeight)
+    public void ConfirmHit()
+    {
+        var cutoff = DateTime.UtcNow.AddMilliseconds(-HitMatchWindowMs);
+        lock (_sync)
+        {
+            while (_pending.Count > 0)
             {
-                bucket.SumX *= MaxWeight / bucket.Weight;
-                bucket.SumY *= MaxWeight / bucket.Weight;
-                bucket.Weight = MaxWeight;
+                var entry = _pending.Dequeue();
+                if (entry.When < cutoff) continue;
+                UpdateBucket(entry.Distance, entry.ResX, entry.ResY);
             }
+        }
+    }
+
+    private void UpdateBucket(float distance, float residualX, float residualY)
+    {
+        var key = GetBucketKey(distance);
+        if (!_buckets.TryGetValue(key, out var bucket))
+        {
+            bucket = new AimBucketData();
+            _buckets[key] = bucket;
+        }
+
+        // EMA update
+        bucket.SumX = Alpha * residualX + (1 - Alpha) * bucket.SumX;
+        bucket.SumY = Alpha * residualY + (1 - Alpha) * bucket.SumY;
+        bucket.Weight = Alpha + (1 - Alpha) * bucket.Weight;
+
+        if (bucket.Weight > MaxWeight)
+        {
+            bucket.SumX *= MaxWeight / bucket.Weight;
+            bucket.SumY *= MaxWeight / bucket.Weight;
+            bucket.Weight = MaxWeight;
         }
     }
 

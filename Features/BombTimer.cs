@@ -30,13 +30,13 @@ internal class BombTimer(Graphics.ModernGraphics graphics) : ThreadedServiceBase
         var networkGameClient = engineModule.Read<IntPtr>(Offsets.engine2_dll.dwNetworkGameClient);
         if (networkGameClient == IntPtr.Zero) return;
 
-        var serverTickCount = ReadSafe(() => process.Read<int>(networkGameClient + Offsets.engine2_dll.dwNetworkGameClient_serverTickCount), 0);
+        var serverTickCount = ReadSafe(() => gameProcess.Read<int>(networkGameClient + Offsets.engine2_dll.dwNetworkGameClient_serverTickCount), 0);
         _currentServerTime = serverTickCount * 0.015625f;
 
         var tempC4 = clientModule.Read<IntPtr>(Offsets.client_dll.dwPlantedC4);
         if (tempC4 == IntPtr.Zero) return;
 
-        _plantedC4 = ReadSafe(() => process.Read<IntPtr>(tempC4), IntPtr.Zero);
+        _plantedC4 = ReadSafe(() => gameProcess.Read<IntPtr>(tempC4), IntPtr.Zero);
         if (_plantedC4 == IntPtr.Zero) return;
 
         // <<< КЛЮЧЕВОЕ ВОЗВРАЩЕНИЕ: Используем главный флаг активности бомбы
@@ -47,7 +47,7 @@ internal class BombTimer(Graphics.ModernGraphics graphics) : ThreadedServiceBase
         if (!_isBombPlanted) return;
 
         // Дополнительная проверка на всякий случай (если флаг не сработал)
-        var isDefused = ReadSafe(() => process.Read<bool>(_plantedC4 + Offsets.m_bBombDefused), false);
+        var isDefused = ReadSafe(() => gameProcess.Read<bool>(_plantedC4 + Offsets.m_bBombDefused), false);
         if (isDefused)
         {
             _isBombPlanted = false; // Явно сбрасываем, если флаг дефузации сработал
@@ -55,9 +55,9 @@ internal class BombTimer(Graphics.ModernGraphics graphics) : ThreadedServiceBase
         }
 
         // Читаем остальные данные
-        var c4Blow = ReadSafe(() => process.Read<float>(_plantedC4 + Offsets.m_flC4Blow), 0f);
-        var defuseCountDown = ReadSafe(() => process.Read<float>(_plantedC4 + Offsets.m_flDefuseCountDown), 0f);
-        _beingDefused = ReadSafe(() => process.Read<bool>(_plantedC4 + Offsets.m_bBeingDefused), false);
+        var c4Blow = ReadSafe(() => gameProcess.Read<float>(_plantedC4 + Offsets.m_flC4Blow), 0f);
+        var defuseCountDown = ReadSafe(() => gameProcess.Read<float>(_plantedC4 + Offsets.m_flDefuseCountDown), 0f);
+        _beingDefused = ReadSafe(() => gameProcess.Read<bool>(_plantedC4 + Offsets.m_bBeingDefused), false);
 
         // Compute times с использованием точного времени
         _timeLeft = c4Blow - _currentServerTime;
@@ -71,7 +71,7 @@ internal class BombTimer(Graphics.ModernGraphics graphics) : ThreadedServiceBase
         }
 
         // Read bomb site
-        var site = ReadSafe(() => process.Read<int>(_plantedC4 + Offsets.m_nBombSite), 0);
+        var site = ReadSafe(() => gameProcess.Read<int>(_plantedC4 + Offsets.m_nBombSite), 0);
         _bombSite = site == 1 ? "B" : "A";
     }
 

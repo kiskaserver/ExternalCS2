@@ -20,10 +20,10 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Setup .NET 8
-        uses: actions/setup-dotnet@v4
+        uses: actions/setup-dotnet@v5
         with:
           dotnet-version: 8.0.x
 
@@ -41,6 +41,70 @@ jobs:
           echo "tag=$tag"         >> $env:GITHUB_OUTPUT
           echo "version=$version" >> $env:GITHUB_OUTPUT
 
+      # ──────────────────────── Kernel driver binary ───────────────────────
+      # The MemoryTool driver source lives in a SEPARATE PRIVATE repository.
+      # Its CI compiles the driver and pushes the resulting binary into an
+      # orphan branch of THIS public repo named `driver-binaries`, alongside
+      # a SHA-256 sidecar:
+      #
+      #   https://github.com/<owner>/<repo>/raw/driver-binaries/MemoryTool.sys
+      #   https://github.com/<owner>/<repo>/raw/driver-binaries/MemoryTool.sys.sha256
+      #
+      # The release workflow simply downloads the latest commit of that
+      # branch, verifies the SHA-256, and attaches the binary to the release.
+      # If the branch or the asset does not exist, the release is still
+      # published but WITHOUT the driver (the C# app falls back to
+      # Kernel32.ReadProcessMemory in user mode).
+      - name: Fetch MemoryTool.sys from driver-binaries branch
+        id: drv
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO:     ${{ github.repository }}
+        run: |
+          $branch = 'driver-binaries'
+          $asset  = 'MemoryTool.sys'
+          $sha    = 'MemoryTool.sys.sha256'
+          New-Item -ItemType Directory -Force -Path driver-dist | Out-Null
+
+          $base = "https://raw.githubusercontent.com/$env:REPO/$branch"
+          $sysUrl = "$base/$asset"
+          $shaUrl = "$base/$sha"
+
+          Write-Host "[*] Downloading $sysUrl"
+          try {
+            Invoke-WebRequest -Uri $sysUrl -OutFile "driver-dist/$asset" `
+              -UseBasicParsing -Headers @{ Authorization = "Bearer $env:GH_TOKEN" }
+          } catch {
+            Write-Warning "Failed to download '$asset' from '$branch' branch: $($_.Exception.Message)"
+            Write-Warning "Release will be published WITHOUT the kernel driver."
+            echo "has_driver=false" >> $env:GITHUB_OUTPUT
+            exit 0
+          }
+
+          # Sidecar checksum is optional but verified when present.
+          try {
+            Invoke-WebRequest -Uri $shaUrl -OutFile "driver-dist/$sha" `
+              -UseBasicParsing -Headers @{ Authorization = "Bearer $env:GH_TOKEN" }
+
+            # Sidecar formats vary: "<hex>  filename" or just "<hex>".
+            $expected = (Get-Content "driver-dist/$sha" -Raw).Trim().Split()[0].ToUpperInvariant()
+            $actual   = (Get-FileHash -Algorithm SHA256 "driver-dist/$asset").Hash.ToUpperInvariant()
+            if ($expected -ne $actual) {
+              throw "SHA-256 mismatch for $asset.`n  expected: $expected`n  actual:   $actual"
+            }
+            Write-Host "[+] SHA-256 verified: $actual"
+          } catch [System.Net.WebException] {
+            Write-Host "[*] No upstream sidecar checksum — skipping verification."
+          }
+
+          $size = (Get-Item "driver-dist/$asset").Length
+          $h    = (Get-FileHash -Algorithm SHA256 "driver-dist/$asset").Hash
+          "{0}  {1}  ({2:N0} bytes)" -f $h, $asset, $size |
+            Set-Content -Path "driver-dist/$sha" -Encoding ASCII
+          Get-Content "driver-dist/$sha" | Write-Host
+          echo "has_driver=true" >> $env:GITHUB_OUTPUT
+
       # ───────────────────────────── CPU build ─────────────────────────────
       - name: Publish CPU (win-x64, self-contained)
         run: >
@@ -53,15 +117,63 @@ jobs:
           /p:Version=${{ steps.ver.outputs.version }}
           -o publish/cpu
 
+      - name: Install Obfuscar
+        run: dotnet tool install --global Obfuscar.GlobalTool
+
+      - name: Create Obfuscar config for CPU build
+        shell: pwsh
+        run: |
+          Set-Content -Path "obfuscar_cpu.xml" -Value '<Obfuscator>
+            <Var name="InPath" value="publish/cpu" />
+            <Var name="OutPath" value="publish/cpu_obf" />
+            <Var name="KeepPublicApi" value="false" />
+            <Var name="HidePrivateApi" value="true" />
+            <Var name="HideStrings" value="true" />
+            <Var name="OptimizeMethods" value="true" />
+            <Var name="SuppressIldasm" value="true" />
+            <Var name="KeyFile" value="" />
+            <Module file="$(InPath)\CS2GameHelper.dll" />
+          </Obfuscator>'
+
+      - name: Obfuscate CPU build
+        run: obfuscar obfuscar_cpu.xml
+
+      - name: Copy dependencies for Obfuscated build
+        shell: pwsh
+        run: |
+          Copy-Item "publish/cpu/*" "publish/cpu_obf" -Recurse -Force -Exclude "CS2GameHelper.dll", "CS2GameHelper.pdb", "CS2GameHelper.exe" -ErrorAction SilentlyContinue
+          Copy-Item "publish/cpu/CS2GameHelper.exe" "publish/cpu_obf/CS2GameHelper.exe" -Force
+
+      - name: Bundle MemoryTool.sys into CPU build
+        if: steps.drv.outputs.has_driver == 'true'
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path "publish/cpu_obf/MemoryTool" | Out-Null
+          Copy-Item "driver-dist/MemoryTool.sys"        "publish/cpu_obf/MemoryTool/" -Force
+          Copy-Item "driver-dist/MemoryTool.sys.sha256" "publish/cpu_obf/MemoryTool/" -Force
+
+      - name: Generate randomized exe
+        shell: pwsh
+        run: |
+          $bytes = new-object byte[] 1024
+          (new-object Random).NextBytes($bytes)
+          [IO.File]::AppendAllText("publish/cpu_obf/CS2GameHelper.exe", [System.Text.Encoding]::ASCII.GetString($bytes))
+
       - name: Zip CPU build
         shell: pwsh
         run: |
           $tag = "${{ steps.ver.outputs.tag }}"
-          Compress-Archive -Path "publish/cpu/*" `
-                           -DestinationPath "CS2GameHelper-$tag-win-x64-cpu.zip" `
+          # Get unique build ID
+          $build_hash = [guid]::NewGuid().ToString().Substring(0, 8)
+          Compress-Archive -Path "publish/cpu_obf/*" `
+                           -DestinationPath "CS2GameHelper-$tag-win-x64-cpu-$build_hash.zip" `
                            -Force
-          $size = (Get-Item "CS2GameHelper-$tag-win-x64-cpu.zip").Length / 1MB
+          $size = (Get-Item "CS2GameHelper-$tag-win-x64-cpu-$build_hash.zip").Length / 1MB
           Write-Host ("CPU zip size: {0:N1} MB" -f $size)
+          
+          # Generate SHA256 manifest
+          $hash = Get-FileHash -Algorithm SHA256 "CS2GameHelper-$tag-win-x64-cpu-$build_hash.zip"
+          "{0}  {1}  ({2:N1} MB)" -f $hash.Hash, "CS2GameHelper-$tag-win-x64-cpu-$build_hash.zip", $size | Set-Content -Path "CS2GameHelper-$tag-win-x64-cpu.SHA256.txt" -Encoding ASCII
 
       # ───────────────────────────── CUDA build ────────────────────────────
       - name: Clean obj/bin between builds
@@ -81,6 +193,13 @@ jobs:
           /p:Version=${{ steps.ver.outputs.version }}
           -o publish/cuda
 
+      - name: Bundle MemoryTool.sys into CUDA build
+        if: steps.drv.outputs.has_driver == 'true'
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path "publish/cuda/MemoryTool" | Out-Null
+          Copy-Item "driver-dist/MemoryTool.sys"        "publish/cuda/MemoryTool/" -Force
+          Copy-Item "driver-dist/MemoryTool.sys.sha256" "publish/cuda/MemoryTool/" -Force
       # GitHub release-asset limit is 2 GiB per file. libtorch_cuda DLLs make
       # the archive 4-6 GB, so split with 7-Zip into <2 GB volumes (1900 MiB).
       - name: Pack CUDA build (7z multi-volume, 1900 MiB each)
@@ -132,10 +251,21 @@ jobs:
               & "C:\Program Files\7-Zip\7z.exe" x "CS2GameHelper-${{ steps.ver.outputs.tag }}-win-x64-cuda.zip.001"
               ```
 
+            ### Kernel driver
+
+            The optional `MemoryTool.sys` kernel driver is bundled inside each
+            archive under `MemoryTool/` and is also attached to this release
+            as a standalone asset (with `MemoryTool.sys.sha256`). See
+            `MemoryTool/README.md` (local repo) for install instructions
+            via the bundled `Loader.exe`.
+
             SHA-256 hashes for verification are in `CS2GameHelper-${{ steps.ver.outputs.tag }}-win-x64-cuda.SHA256.txt`.
           files: |
-            CS2GameHelper-${{ steps.ver.outputs.tag }}-win-x64-cpu.zip
+            CS2GameHelper-${{ steps.ver.outputs.tag }}-win-x64-cpu*.zip
+            CS2GameHelper-${{ steps.ver.outputs.tag }}-win-x64-cpu.SHA256.txt
             CS2GameHelper-${{ steps.ver.outputs.tag }}-win-x64-cuda.zip.*
             CS2GameHelper-${{ steps.ver.outputs.tag }}-win-x64-cuda.SHA256.txt
+            driver-dist/MemoryTool.sys
+            driver-dist/MemoryTool.sys.sha256
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

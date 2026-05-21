@@ -1,7 +1,8 @@
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
-using System.Threading.Tasks;
+using System.Threading;
 using CS2GameHelper.Data.Entity;
 using CS2GameHelper.Graphics;
 using CS2GameHelper.Utils;
@@ -14,6 +15,35 @@ public static class HitSound
     private static int _lastDamage = 0;
     private static DateTime _lastPlayTime = DateTime.MinValue;
     private static readonly object _sync = new();
+
+    // Один фоновый поток-проигрыватель вместо Task.Run на каждый хит.
+    // Bounded(8) — при любом всплеске избыточные звуки дропаются, а не плодят потоки.
+    private static readonly BlockingCollection<string> _soundQueue = new(boundedCapacity: 8);
+
+    static HitSound()
+    {
+        var worker = new Thread(() =>
+        {
+            foreach (var path in _soundQueue.GetConsumingEnumerable())
+            {
+                try
+                {
+                    using var player = new System.Media.SoundPlayer(path);
+                    player.PlaySync();
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"[HitSound] Playback error: {ex.Message}");
+                }
+            }
+        })
+        {
+            IsBackground = true,
+            Name = "HitSoundPlayer",
+            Priority = ThreadPriority.BelowNormal
+        };
+        worker.Start();
+    }
 
     private class HitText
     {
@@ -40,12 +70,12 @@ public static class HitSound
         var localController = gameProcess.ModuleClient?.Read<IntPtr>(Offsets.client_dll.dwLocalPlayerController) ?? IntPtr.Zero;
         if (localController == IntPtr.Zero) return;
 
-        var actionTracking = gameProcess.Process.Read<IntPtr>(
+        var actionTracking = gameProcess.Read<IntPtr>(
             IntPtr.Add(localController, Offsets.m_pActionTrackingServices)
         );
         if (actionTracking == IntPtr.Zero) return;
 
-        int currentDamage = gameProcess.Process.Read<int>(
+        int currentDamage = gameProcess.Read<int>(
             IntPtr.Add(actionTracking, Offsets.m_flTotalRoundDamageDealt)
         );
 
@@ -141,18 +171,8 @@ public static class HitSound
                 return;
             }
 
-            _ = Task.Run(() =>
-            {
-                try
-                {
-                    using var player = new System.Media.SoundPlayer(path);
-                    player.PlaySync();
-                }
-                catch (Exception ex)
-                {
-                    Console.WriteLine($"[HitSound] Playback error: {ex.Message}");
-                }
-            });
+            // TryAdd — неблокирующий, избыток просто дропаем.
+            _soundQueue.TryAdd(path);
         }
         catch (Exception ex)
         {
